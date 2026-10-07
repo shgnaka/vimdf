@@ -33,6 +33,12 @@ VimDF replaces Chrome's built-in PDF viewer with a modal, keyboard-driven one. I
 
 ## ✨ Features
 
+### Install a development build
+
+Open [Actions → Tests](https://github.com/shgnaka/vimdf/actions/workflows/test.yml), choose a successful run for the branch you want, and download **vimdf-unpacked-…** under **Artifacts** (GitHub sign-in required). Extract the ZIP into a permanent folder. In `chrome://extensions`, enable **Developer mode**, click **Load unpacked**, and select the extracted folder containing `manifest.json`. The artifact contains the complete compiled extension; you do not need Node.js or the source repository to install it. Keep the folder after installation.
+
+Each push and pull request generates an artifact after tests and the build pass. Artifacts are retained for 30 days. To update, replace the contents of the same folder with a newer artifact and click **Reload** on the extension. If building locally, run `npm ci` and `npm run build`, then load `dist/` instead. GitHub's **Download ZIP** under **Code** contains source code, not this compiled extension.
+
 ### Password-protected PDFs
 
 In extension settings, register named passwords under **PDF passwords**. VimDF tries the last successful password for the document first, then enabled passwords marked for use on other PDFs. If none succeeds, enter a password in the modal dialog; saving is optional and happens only after the PDF opens. Registrations can be edited, disabled, reordered, or deleted.

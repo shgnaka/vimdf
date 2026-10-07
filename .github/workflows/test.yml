@@ -1,8 +1,8 @@
 name: Tests
 on:
   push:
-    branches: [main, spec/pdf-password-autofill]
   pull_request:
+  workflow_dispatch:
 permissions:
   contents: read
 jobs:
@@ -17,3 +17,14 @@ jobs:
       - run: npm ci
       - run: npm run test:password
       - run: npm run build
+      - name: Include licenses
+        run: |
+          cp LICENSE dist/LICENSE
+          cp node_modules/pdfjs-dist/LICENSE dist/LICENSE.pdfjs
+      - name: Upload unpacked extension
+        uses: actions/upload-artifact@v4
+        with:
+          name: vimdf-unpacked-${{ github.sha }}
+          path: dist/
+          if-no-files-found: error
+          retention-days: 30
