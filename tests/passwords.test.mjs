@@ -1,7 +1,7 @@
 import nodeTest from 'node:test';
 import assert from 'node:assert/strict';
 
-// TDD contract: deliberately imports the future implementation, not a fake.
+// Contract tests exercise the same implementation used by the viewer.
 const api = () => import('../src/viewer/passwords.ts');
 const test = (name, fn) => nodeTest(name, {timeout: 2000}, fn);
 const record = (id, password, extra = {}) => ({id, name: id, password, enabled: true, shared: true, ...extra});
@@ -130,4 +130,22 @@ test('abort during prompt ignores a late response and never saves', async () => 
   answer({password:'correct',remember:true,name:'late',shared:true});
   await new Promise(resolve=>setImmediate(resolve));
   assert.equal(f.destroyed,1); assert.deepEqual(f.attempts,[]); assert.deepEqual(f.saved,[]);
+});
+
+test('abort while storage read is pending never supplies a password', async () => {
+  const {openWithPasswords}=await api(); const f=fixture();
+  const controller=new AbortController(); let release; let entered;
+  const ready=new Promise(resolve=>{entered=resolve;});
+  f.options.signal=controller.signal;
+  f.options.store.read=()=>{entered();return new Promise(resolve=>{release=resolve;});};
+  const result=openWithPasswords(f.options); const rejected=assert.rejects(result,{name:'AbortError'});
+  f.start();await ready;controller.abort();await rejected;
+  release({records,rememberedId:null});await new Promise(resolve=>setImmediate(resolve));
+  assert.deepEqual(f.attempts,[]);assert.deepEqual(f.prompts,[]);
+});
+test('prompt failure rejects safely instead of leaving the PDF load pending', async () => {
+  const f=fixture({autoFill:false});
+  f.options.prompt=async()=>{throw new Error('secret must not escape');};
+  await assert.rejects(run(f),error=>error.message==='Unable to request a PDF password');
+  assert.equal(f.destroyed,1);assert.deepEqual(f.saved,[]);
 });

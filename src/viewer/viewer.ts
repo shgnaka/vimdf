@@ -32,6 +32,9 @@ import { checkAndShowConflictWarning } from "./conflict-notification";
 import { checkAndShowUpdateNotification } from "./update-notification";
 import { downloadPdf, printPdf, suggestedFilename } from "./print";
 import { showSaveDialog } from "./save-dialog";
+import { documentKey, openWithPasswords } from "./passwords";
+import { createPasswordStore } from "../common/password-store";
+import { showPasswordPrompt } from "./password-dialog";
 import {
   abortAndFallbackToNativeHandler,
   getStreamInfo,
@@ -105,6 +108,7 @@ export class Viewer {
   private statusRight = document.getElementById("statusRight")!;
 
   private saveDebounceTimer: number | null = null;
+  private passwordLoad: AbortController | null = null;
 
   constructor(settings: Settings) {
     this.settings = settings;
@@ -239,11 +243,23 @@ export class Viewer {
   }
 
   async load(src: PdfSource): Promise<void> {
+    this.passwordLoad?.abort();
+    const loading = new AbortController();
+    this.passwordLoad = loading;
     // Identity, not necessarily what we read from: a MIME-handler stream URL
     // is one-shot and internal, and a picked file has no URL at all. Keying
     // storage on the navigated URL keeps marks and last-page attached to the
     // document however its bytes reached us.
-    this.pdfUrl = src.identity;
+    let passwordKey: string;
+    try {
+      passwordKey = documentKey(src.identity);
+    } catch {
+      if (!src.data) throw new Error("Cannot identify this PDF for password lookup");
+      // Hash before PDF.js transfers the ArrayBuffer to its worker.
+      const hash = await crypto.subtle.digest("SHA-256", src.data);
+      passwordKey = `sha256:${Array.from(new Uint8Array(hash), b => b.toString(16).padStart(2, "0")).join("")}`;
+    }
+    if (loading.signal.aborted) throw new DOMException("Cancelled", "AbortError");
     const isHttp = /^https?:/i.test(src.url ?? "");
     const loadingTask = getDocument({
       ...(src.data !== undefined ? { data: src.data } : { url: src.url! }),
@@ -261,7 +277,18 @@ export class Viewer {
     // on screen) — release the old one only once pdf.js has stopped
     // referencing it, or its in-flight render tasks throw.
     const previous = this.pdfDocument;
-    this.pdfDocument = await loadingTask.promise;
+    const pdf = await openWithPasswords({
+      task: loadingTask,
+      documentKey: passwordKey,
+      store: createPasswordStore(loading.signal),
+      prompt: showPasswordPrompt,
+      autoFill: !chrome.extension.inIncognitoContext,
+      signal: loading.signal,
+      onSaveError: () => this.setStatusCenter("PDF opened, but the password could not be saved."),
+    });
+    if (loading.signal.aborted) { await pdf.destroy(); throw new DOMException("Cancelled", "AbortError"); }
+    this.pdfUrl = src.identity;
+    this.pdfDocument = pdf;
     this.pdfViewer.setDocument(this.pdfDocument);
     this.linkService.setDocument(this.pdfDocument, null);
     if (previous) void previous.destroy().catch(() => {});
@@ -1191,6 +1218,7 @@ async function main(): Promise<void> {
       await marks.retarget(identity);
       await viewer.load({ data, identity });
     } catch (err) {
+      if ((err as { name?: string }).name === "AbortError") return;
       document.getElementById("statusLeft")!.textContent =
         `Error reading ${picked.name}: ${String(err)}`;
     }
@@ -1213,6 +1241,10 @@ async function main(): Promise<void> {
   try {
     await viewer.load(source);
   } catch (err) {
+    if ((err as { name?: string }).name === "AbortError") {
+      document.getElementById("statusLeft")!.textContent = "PDF loading cancelled";
+      return;
+    }
     console.error("Failed to load PDF:", err);
     if (isLocal) {
       // Every local read failure — permission denied, moved, deleted —

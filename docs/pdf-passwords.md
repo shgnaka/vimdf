@@ -1,4 +1,4 @@
-# PDF パスワード登録・自動入力仕様（実装前）
+# PDF パスワード登録・自動入力仕様
 
 ## 利用者の操作
 
@@ -24,9 +24,9 @@ getDocument が返す loadingTask.onPassword を loadingTask.promise の await �
 
 ## テストが要求する境界 API
 
-今後 src/viewer/passwords.ts に以下を実装する。テストは実装前の RED 段階であり、モジュールが存在しない現状では失敗する。テスト用に機能を仮実装して成功させない。
+src/viewer/passwords.ts に以下を実装している。viewer.load、設定画面、Chrome ローカル保存に接続済み。
 
-実行環境は Node.js 24 以上。npm run test:password で 20 件の契約テストを実行する。依存パッケージの追加は不要。未実装時の失敗理由は ERR_MODULE_NOT_FOUND であり、機能の正しさを確認したという意味ではない。各テストのタイムアウトは 2 秒。
+実行環境は Node.js 24 以上。npm ci の後 npm run test:password で契約テスト、保存処理テスト、実 PDF.js 結合テストを実行する。合計 34 件。RC4-128 と AES-256 の合成 PDF フィクスチャは pypdf で作成した空白 1 ページの文書で、実ユーザーの文書やパスワードを含まない。PDF.js 結合テストのタイムアウトは 10 秒、その他の読み込み契約テストは 2 秒。npm run build は型チェックも行う。GitHub Actions でもテストとビルドを実行する。
 
 - documentKey(identity: string): string — URL のフラグメント除去。HTTP(S)/file 以外は関連付け不可として例外。ファイルバイトのハッシュは呼び出し側が生成する。
 - selectCandidates(records, rememberedId, enabled): Record[] — 有効・適用範囲・順序・秘密文字列の重複排除。
@@ -37,4 +37,6 @@ getDocument が返す loadingTask.onPassword を loadingTask.promise の await �
 
 ## 実ブラウザでの受け入れ確認
 
-自動テストのモックは PDF.js の実装・暗号方式・Chrome UI を検証しない。実装時に、既知のパスワードで作成した暗号化 PDF（URL、file、ドロップ、MIME ストリーム）と非暗号化 PDF を用意し、再起動後の自動入力、登録の編集・削除、伏字、Enter/Esc、Vim キーとの競合、インコグニート分離、TRUSTED_CONTEXTS 設定、保存容量エラーを確認する。PDF.js 本物との暗号化 PDF 結合テストも追加する。現段階ではこれらは未実施。
+契約・保存テストのモックだけでは Chrome UI を検証しない。実 PDF.js による RC4-128 / AES-256 の復号は結合テストで確認済み。実ブラウザでは、暗号化 PDF（URL、file、ドロップ、MIME ストリーム）と非暗号化 PDF を用意し、再起動後の自動入力、登録の編集・削除、伏字、Enter/Esc、Vim キーとの競合、インコグニート分離、TRUSTED_CONTEXTS 設定、保存容量エラーを確認する。環境にブラウザ実行ファイルがないため、これらの画面操作は未確認。
+
+パスワードは OS キーチェーンやマスターパスワードで暗号化していない。保存済み候補は文書を開くたびに読み出す。設定変更は次回の読み込みに反映される。文書切り替えは前の読み込みを中止し、待機中のダイアログ結果やストレージ読み取り結果を破棄する。Chrome にすでに送信済みの storage.set 自体はキャンセルできない。

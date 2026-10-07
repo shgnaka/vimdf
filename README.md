@@ -33,6 +33,12 @@ VimDF replaces Chrome's built-in PDF viewer with a modal, keyboard-driven one. I
 
 ## ✨ Features
 
+### Password-protected PDFs
+
+In extension settings, register named passwords under **PDF passwords**. VimDF tries the last successful password for the document first, then enabled passwords marked for use on other PDFs. If none succeeds, enter a password in the modal dialog; saving is optional and happens only after the PDF opens. Registrations can be edited, disabled, reordered, or deleted.
+
+Passwords are stored in plain text in this browser profile, never synced, and only passed to the local PDF.js reader. Incognito mode does not read or write the password vault. Disable automatic input in settings to enter passwords manually. Development checks: Node.js 24+, `npm ci`, `npm run test:password`, and `npm run build`.
+
 - **Vim-style navigation** — `j`/`k`/`h`/`l`, `gg`/`G`/`{n}G`, `Ctrl-d`/`Ctrl-u`/`Ctrl-f`/`Ctrl-b`
 - **Tab navigation** (Vimium-compatible) — `J`/`K` previous/next tab, `g0`/`g$` first/last, `t` new tab, `x` close. Fills the gap left by Vimium not being able to bind keys on Chrome's PDF viewer
 - **Search** — `/` to query, `n`/`N` to cycle matches
