@@ -1,4 +1,6 @@
 // Service worker for VimDF.
+// Keep the local password vault unavailable to content scripts on startup.
+void chrome.storage.local.setAccessLevel({ accessLevel: "TRUSTED_CONTEXTS" }).catch(() => {});
 //
 // Registers dynamic declarativeNetRequest rules that redirect PDF requests
 // to our viewer. We use dynamic rules (not a static rule_resources file)

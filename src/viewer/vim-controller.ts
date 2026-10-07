@@ -121,6 +121,7 @@ export class VimController {
   };
 
   private onKeyDown = (e: KeyboardEvent): void => {
+    if (document.querySelector(".password-dialog[open]")) return;
     const key = e.key;
 
     // If the user is typing into any form input (save dialog, finder,

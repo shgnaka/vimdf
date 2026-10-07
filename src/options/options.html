@@ -234,6 +234,21 @@
         </label>
       </section>
 
+      <section id="passwordSettings">
+        <h2>PDF passwords</h2>
+        <p class="hint">Saved in plain text in this browser profile. Passwords are not synced and are only passed to the local PDF reader.</p>
+        <label class="row checkbox"><input type="checkbox" id="passwordAutoFill" /><span>Automatically try saved passwords</span></label>
+        <form class="password-form">
+          <label>Name <input name="name" type="text" placeholder="e.g. Course materials" /></label>
+          <label>Password <input name="password" type="password" autocomplete="off" required /></label>
+          <label><input name="visible" type="checkbox" /> Show password</label>
+          <label><input name="shared" type="checkbox" checked /> Automatically try on other PDFs</label>
+          <button type="submit">Register password</button>
+        </form>
+        <div class="password-list"></div>
+        <p class="password-status" role="status"></p>
+        <button id="passwordClear" type="button">Delete all passwords</button>
+      </section>
       <section class="actions">
         <span id="status" aria-live="polite"></span>
         <button id="reset" type="button">Reset to defaults</button>

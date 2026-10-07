@@ -224,3 +224,7 @@ button.clear {
   padding: 4px 10px;
   font-size: 12px;
 }
+.password-form, .password-record { display: grid; gap: 10px; margin: 16px 0; }
+.password-record { border: 1px solid var(--border); border-radius: 8px; padding: 14px; }
+.password-form label { display: block; }
+.password-form input[type="password"], .password-record input { max-width: 100%; }

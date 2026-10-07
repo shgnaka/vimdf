@@ -849,3 +849,20 @@ body.vimdf-dragging::after {
   pointer-events: none;
   z-index: 60;
 }
+/* Native modal keeps focus and shortcuts inside the password form. */
+.password-dialog {
+  width: min(440px, calc(100vw - 40px));
+  padding: 24px;
+  border: 1px solid var(--page-border);
+  border-radius: 10px;
+  background: var(--bg);
+  color: var(--fg);
+}
+.password-dialog::backdrop { background: rgb(0 0 0 / 55%); }
+.password-dialog label { display: block; margin: 12px 0; }
+.password-dialog input[type="password"], .password-dialog input[type="text"] {
+  display: block; width: 100%; box-sizing: border-box; padding: 8px; margin-top: 6px;
+}
+.password-dialog fieldset { margin: 12px 0; }
+.password-actions { display: flex; justify-content: flex-end; gap: 12px; }
+.password-dialog button { padding: 8px 14px; }

@@ -1,3 +1,4 @@
+import { setupPasswordOptions } from "./password-options";
 import {
   DEFAULT_SETTINGS,
   loadSettings,
@@ -405,3 +406,4 @@ async function refreshLocalFileStatus(): Promise<void> {
 }
 
 void refreshLocalFileStatus();
+setupPasswordOptions();
