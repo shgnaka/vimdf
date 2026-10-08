@@ -74,6 +74,16 @@ export class VimController {
     // Stop continuous scroll if window loses focus (e.g. Cmd+Tab) since we
     // won't get a keyup.
     window.addEventListener("blur", () => this.scroller.stop());
+    document.addEventListener("visibilitychange", () => {
+      if (document.hidden) this.scroller.stop();
+    });
+    document.addEventListener("focusin", (e) => {
+      const target = e.target;
+      if (target instanceof HTMLInputElement || target instanceof HTMLTextAreaElement ||
+          (target instanceof HTMLElement && target.isContentEditable)) {
+        this.scroller.stop();
+      }
+    });
 
     const help = document.getElementById("help");
     help?.addEventListener("click", (e) => {
@@ -121,8 +131,16 @@ export class VimController {
   };
 
   private onKeyDown = (e: KeyboardEvent): void => {
-    if (document.querySelector(".password-dialog[open]")) return;
+    if (document.querySelector(".password-dialog[open]")) {
+      this.scroller.stop();
+      return;
+    }
     const key = e.key;
+    // Any other command takes ownership of the viewport before it runs.
+    if (!(["j", "k", "h", "l"].includes(key)) || e.ctrlKey || e.metaKey || e.altKey ||
+        this.mode !== "normal" || this.caretMode.isActive || isOutlineFocusActive() || this.isHelpOpen()) {
+      this.scroller.stop();
+    }
 
     // If the user is typing into any form input (save dialog, finder,
     // search, help filter…), stay out of the way entirely. Our capture-phase
@@ -136,6 +154,7 @@ export class VimController {
       target instanceof HTMLTextAreaElement ||
       (target instanceof HTMLElement && target.isContentEditable)
     ) {
+      this.scroller.stop();
       this.pendingZ = false;
       this.pendingOutlineG = false;
       return;
@@ -660,33 +679,23 @@ export class VimController {
     }
   };
 
-  /**
-   * Dispatch a scroll key:
-   *  - first press (no repeat): one smooth step
-   *  - held (repeat=true): hand off to rAF continuous scroller
-   */
+  /** Taps and holds share the same animation and speed. */
   private handleScroll(
     e: KeyboardEvent,
-    _key: ScrollKey,
+    key: ScrollKey,
     axis: "x" | "y",
     direction: 1 | -1,
     step: number,
   ): void {
-    if (e.repeat) {
-      this.scroller.start(axis, direction);
-      return;
-    }
-    if (axis === "y") this.viewer.scrollBy(0, direction * step);
-    else this.viewer.scrollBy(direction * step, 0);
+    this.scroller.press(key, axis, direction, step, e.repeat);
   }
 
   private onKeyUp = (e: KeyboardEvent): void => {
-    if (e.key === "j" || e.key === "k" || e.key === "h" || e.key === "l") {
-      this.scroller.stop();
-    }
+    this.scroller.release(e.key);
   };
 
   private enterHint(newTab: boolean): void {
+    this.scroller.stop();
     const ok = this.hints.activate({
       newTab,
       onExit: () => {
@@ -773,11 +782,13 @@ export class VimController {
   }
 
   private openFinder(): void {
+    this.scroller.stop();
     this.mode = "finder";
     void this.finder.show();
   }
 
   private enterSearch(): void {
+    this.scroller.stop();
     this.mode = "search";
     const bar = document.getElementById("searchbar");
     const input = document.getElementById("searchInput") as HTMLInputElement;
@@ -811,6 +822,7 @@ export class VimController {
   }
 
   private openHelp(): void {
+    this.scroller.stop();
     document.getElementById("help")?.removeAttribute("hidden");
   }
 
@@ -1037,3 +1049,4 @@ function matchesAlias(e: KeyboardEvent, alias: string): boolean {
   if (e.metaKey !== mods.includes("meta")) return false;
   return e.key === key;
 }
+

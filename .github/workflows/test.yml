@@ -16,6 +16,7 @@ jobs:
           cache: npm
       - run: npm ci
       - run: npm run test:password
+      - run: npm run test:scroll
       - run: npm run build
       - name: Include licenses
         run: |
@@ -28,3 +29,4 @@ jobs:
           path: dist/
           if-no-files-found: error
           retention-days: 30
+

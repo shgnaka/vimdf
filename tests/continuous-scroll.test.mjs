@@ -101,3 +101,22 @@ test('stalled frame cannot jump more than 50ms of base movement', t => {
   near(f.container.scrollTop - before, 31.25); f.advance(16);
   near(f.container.scrollTop - before, 41.25);
 });
+
+test('late repeats after force-stop or reaching an edge cannot restart scrolling', t => {
+  const f = fixture(t);
+  f.scroller.press('j', 'y', 1, 100); f.advance(32); f.scroller.stop();
+  const before = f.container.scrollTop;
+  f.scroller.press('j', 'y', 1, 100, true); f.advance(300);
+  near(f.container.scrollTop, before); assert.equal(f.frames.size, 0);
+  f.container.scrollTop = 10000;
+  f.scroller.press('j', 'y', 1, 100); f.advance(32);
+  f.scroller.press('j', 'y', 1, 100, true);
+  assert.equal(f.frames.size, 0);
+});
+test('zero elapsed frames do not invent movement; invalid steps schedule nothing', t => {
+  const f = fixture(t);
+  for (const step of [0, -1, NaN, Infinity]) f.scroller.press('j', 'y', 1, step);
+  assert.equal(f.frames.size, 0);
+  f.scroller.press('j', 'y', 1, 100); f.frame(0); near(f.container.scrollTop, 500);
+  f.scroller.release('j'); f.advance(300); near(f.container.scrollTop, 600);
+});

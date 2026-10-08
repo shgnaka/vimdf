@@ -2,7 +2,7 @@
 
 ## Scope and acceptance criteria
 
-Unify normal-mode j/k/h/l taps and holds in ContinuousScroll. Do not change wheel/touch scrolling, PDF rendering, outline/help scrolling, page jumps, or Ctrl-d/u/f/b in this change. This is a test-first specification; production implementation is intentionally absent.
+Unify normal-mode j/k/h/l taps and holds in ContinuousScroll. Do not change wheel/touch scrolling, PDF rendering, outline/help scrolling, page jumps, or Ctrl-d/u/f/b in this change. The scrolling engine and controller wiring implement this specification.
 
 1. Every initial keydown starts the same requestAnimationFrame animator. Never use browser-native smooth scrolling for these keys.
 2. A tap released before its step completes still finishes exactly the configured step (default vertical 100px, horizontal 80px), except when clamped by a document edge. Target step duration is 160ms. Use a constant base speed step/160 px/ms so the tap-to-hold boundary has no velocity reset.
@@ -20,4 +20,4 @@ Keep the exported ContinuousScroll class in src/viewer/continuous-scroll.ts. Add
 
 ## Verification
 
-Run `node --experimental-transform-types --test tests/continuous-scroll.test.mjs` with Node 22.18+ (the flag transforms TypeScript parameter properties). Virtual time and a clamped scroll container make distance, cancellation and frame scheduling deterministic. Tests are expected to fail against the existing implementation because press/release do not exist yet. Before accepting the later implementation, also run existing password tests and typecheck, then manually check controller wiring in a browser: quick tap, hold before repeat, repeated tap, j-to-k, j-to-l, blur, hidden tab, search/input focus, document edges. The unit tests verify the scrolling engine; event wiring and perceived smoothness still require that browser check.
+Run `node --experimental-transform-types --test tests/continuous-scroll.test.mjs` with Node 22.18+ (the flag transforms TypeScript parameter properties). Virtual time and a clamped scroll container make distance, cancellation and frame scheduling deterministic. The regression suite includes late-repeat cancellation and invalid-step guards. Before accepting the later implementation, also run existing password tests and typecheck, then manually check controller wiring in a browser: quick tap, hold before repeat, repeated tap, j-to-k, j-to-l, blur, hidden tab, search/input focus, document edges. The unit tests verify the scrolling engine; event wiring and perceived smoothness still require that browser check.
