@@ -35,11 +35,12 @@ export const test = base.extend({
       await context.addInitScript(() => {
         window.__pickerCalls = []; window.__permissionCalls = [];
         window.__pickerError = null; window.__permission = null;
+        window.__pickerName = 'University';
         window.showDirectoryPicker = async options => {
           window.__pickerCalls.push({ options, active: navigator.userActivation.isActive });
           if (window.__pickerError) throw new DOMException('picker failed', window.__pickerError);
           const opfs = await navigator.storage.getDirectory();
-          return opfs.getDirectoryHandle('University', { create: true });
+          return opfs.getDirectoryHandle(window.__pickerName, { create: true });
         };
         const prototype = FileSystemHandle.prototype;
         const query = prototype.queryPermission;
@@ -80,8 +81,10 @@ export const test = base.extend({
           const encrypted = JSON.parse(await readFile(new URL('../fixtures/AES-256.json', import.meta.url), 'utf8'));
           await setupPage.evaluate(async ({ bytes, cipher, rootA, rootB, options }) => {
             const opfs = await navigator.storage.getDirectory();
-            const a = await opfs.getDirectoryHandle('University', { create: true });
-            const b = await opfs.getDirectoryHandle('Books', { create: true });
+            const parentA = options.sameNames ? await opfs.getDirectoryHandle('Parent-A', { create: true }) : opfs;
+            const parentB = options.sameNames ? await opfs.getDirectoryHandle('Parent-B', { create: true }) : opfs;
+            const a = await parentA.getDirectoryHandle(options.sameNames ? 'Documents' : 'University', { create: true });
+            const b = await parentB.getDirectoryHandle(options.sameNames ? 'Documents' : 'Books', { create: true });
             const course = await a.getDirectoryHandle('course', { create: true });
             async function write(dir, name, bytes) {
               const handle = await dir.getFileHandle(name, { create: true });
@@ -93,7 +96,8 @@ export const test = base.extend({
             if (options.hostile) await write(a, '<img src=x onerror=alert(1)>.pdf', bytes);
             if (options.emptyFolder) await a.getDirectoryHandle('empty', { create: true });
             for (let i = 0; i < (options.pdfCount ?? 0); i++) await write(a, `document-${String(i).padStart(3, '0')}.pdf`, bytes);
-            const roots = [{ id: rootA, handle: a }, { id: rootB, handle: b }];
+            const roots = [{ id: rootA, handle: a }];
+            if (!options.singleRoot) roots.push({ id: rootB, handle: b });
             for (let i = 0; i < (options.extraRoots ?? 0); i++) {
               roots.push({ id: crypto.randomUUID(), handle: await opfs.getDirectoryHandle(`Folder-${String(i).padStart(3, '0')}`, { create: true }) });
             }

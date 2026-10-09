@@ -71,4 +71,19 @@
 | 操作・フォーカス | ボタンの `Enter` は 1 回だけ実行。確認中の一覧操作を停止。取消後のフォーカス復帰、長い一覧での選択行追従 |
 | 利用不可・復元失敗 | API 不在ではフォルダ操作なし。DB 復元失敗で既存登録を空にしない。通常の PDF 選択を利用できる |
 
-個別解除のモデルと保存規則は `local-browser-registry.test.mjs`、解除後の復帰先は `local-integration-session.test.mjs`、revision 競合は `local-integration-storage.test.mjs` に既存の検査がある。ただし、上表すべての UI 条件を既存テストで確認済みとは扱わない。特に同名・絞り込み後の解除確認、次の既定の説明、`Esc` とフォーカス、PDF 保存データ保持の実接続には追加検査が必要。既存のブラウザ試験の 8 失敗も残る。今回の変更は要件・仕様の整理であり、実装完了や全テスト成功の報告ではない。
+既存の Registry・Session・storage 検査に加えて、`local-browser-folder-management.test.mjs` の 6 件と `browser/local-folder-management.spec.mjs` の 18 件を追加した。テスト名の FM ID で以下の要件へ対応付ける。モデルと fake IDB の成功だけで DOM・native handle・Viewer の保持を証明せず、画面は本番実装を動かして検査する。
+
+| 要件 | 自動検査 |
+| --- | --- |
+| FM-01 | 同名の native handle の識別表示・accessible name・各行の解除ボタン、設定画面から管理一覧への導線 |
+| FM-02 | 既存の初回登録・取消と、新しい `a` による追加・重複選択。既存 ID と revision、プライマリーが変わらないこと |
+| FM-03 | 既存の選択 / 検索 / 確定の分離と、再許可時の ID / PDF identity 保持、追加後の明示確定 |
+| FM-04 | 同名・絞り込み後の解除対象 ID、確認前の保存なし、取消ボタン / `Esc`、次の既定・最後の登録の説明、失効した対象の無許可での解除 |
+| FM-05 | 非既定・既定・最後の解除、残る handle / ID / 順序、同時に保存されるプライマリー、保存中の旧状態保持、未知 / 解除済み ID の拒否 |
+| FM-06 | 実 OPFS ファイルの bytes、ページ位置 / マーク / ハイライト / パスワード / local・sync 設定の保持。他タブで解除しても読み込み済み PDF を保持。再登録の新 identity と旧マークの保存 |
+| FM-07 | 遅い保存の失敗、native put 成功後の transaction abort、古い確認への別タブ更新、明示 reload と再選択、破損した保存値の保持、通常 PDF 選択による回復 |
+| FM-08 | `Tab` / `Enter` での行操作、確認中の一覧キー停止、取消後のフォーカス、native 保存中の重複キーとボタン停止。長い一覧の選択行追従は既存の受け入れテストを共用 |
+
+picker と permission は制御した境界を利用する。同名のフォルダは OPFS 内の異なる親に作り、保存・読取は native handle と実 IndexedDB で行う。transaction の遅延・abort は native request の境界だけを制御し、Registry・Session・DOM の状態や Viewer の保持を代替実装しない。
+
+追加日：2026-10-10。新規モデル 6 件を含む Node 合計 182 件と build は成功。ブラウザ全体は 45 件を収集し、CI の実行結果を [テスト記録](local-browser-testing.md) に残す。追加前の 8 失敗は未修正。今回の変更はテストと対応表の追加であり、不足する実装の修正は行わない。OS picker・権限保持と実 Vimium-C の版別動作は、代表環境での MR 手順として確認する。
