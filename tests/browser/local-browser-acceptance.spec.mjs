@@ -135,7 +135,7 @@ test('[UI-02/UI-03] API-unavailable screen ignores folder shortcuts without crea
 test('[UI-02/PDF-01] API-unavailable fallback still opens picked PDF bytes and returns to the fallback screen', async ({ extension }) => {
   const page = await withoutFolderApi(extension); const fetched = [];
   page.on('request', request => { if (request.url().startsWith('https://local-pdf.vimdf.invalid/')) fetched.push(request.url()); });
-  await page.locator('#fallback-file').setInputFiles({ name: 'picked.pdf', mimeType: 'application/pdf', buffer: lessonPdf() });
+  await page.locator('#fallback-file').setInputFiles({ name: 'picked.pdf', mimeType: 'application/pdf', buffer: Buffer.from(lessonPdf()) });
   await expect(page.getByTestId('local-browser')).toHaveAttribute('data-mode', 'pdf');
   await expect(page.locator('#viewer .page')).toHaveCount(2);
   await page.keyboard.press('H'); await expect(page.locator('[data-action="pick-file"]')).toBeVisible();
