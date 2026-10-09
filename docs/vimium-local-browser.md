@@ -1,16 +1,22 @@
-# Vimium-C から起動するローカル PDF 選択
+# Vimium-C から起動する複数フォルダ対応のローカル PDF 選択
 
-## 目的と対象
+## 目的と範囲
 
-Vimium-C の Vomnibar で `vimdf` を確定すると、VimDF 専用タブでローカル PDF を Vim キー操作で選ぶ。Vomnibar の候補へファイルを追加しない。VimDF は omnibox.keyword を登録せず、既存の Vimium-C とアドレスバーの設定を変更しない。アーカイブされた別の omnibar プロジェクトへの依存やコピーは追加しない。対象は File System Access API を利用できるデスクトップ Chromium。ブラウザごとの拡張ページでの API 利用・権限保持は実機検証が必要。
+Vimium-C の Vomnibar で `vimdf` を確定すると、VimDF 専用タブで登録済みフォルダの PDF を Vim キー操作で選ぶ。複数のフォルダを登録し、そのうち 1 つをプライマリーフォルダとして保存する。起動時はプライマリーのルートを表示し、登録フォルダ一覧で別のフォルダを確定すると、プライマリーを変更して開く。
 
-この変更は仕様と実装前の受け入れテスト。機能本体はまだ実装しない。
+この PR は仕様・要件と実装前の受け入れテストを整える。機能本体、DOM、IndexedDB アダプター、拡張メッセージの配線は今後の実装対象。単一フォルダ用の旧 `RootAccess` テスト契約を `FolderRegistry` に置き換える。旧契約は未実装なので、既存利用者データの移行を前提にしない。
+
+Vomnibar の候補にローカルファイルを追加しない。VimDF は `omnibox.keyword` を登録せず、既存のアドレスバーや他の検索エンジンの設定を変更しない。アーカイブされた別の omnibar プロジェクトには依存しない。対象は File System Access API を利用できるデスクトップブラウザの拡張専用タブ。Chrome と Brave の対応状況・権限保持は実機確認を必要とする。
+
+この画面の「検索」は、現在のフォルダのフォルダ名・PDF 名、または登録フォルダ名の絞り込み。全登録フォルダの再帰検索や PDF 本文の横断検索は含めない。PDF を開いた後の本文検索は既存 Viewer の機能を利用する。
 
 ## 起動契約
 
-VimDF background は runtime.onMessageExternal で、設定で明示許可した Vimium-C 拡張 ID からの `{type:"vimdf.openLocalBrowser",version:1}` のみ受け付ける。メッセージ内の from 文字列は認証に使わず sender.id を検証する。許可 ID の初期値は空。別ストア版・開発版も利用者が ID を登録できる。通常の内部 onMessage 処理とは分離する。URL・絶対パス・コードは受信契約に含めない。不正型・未対応 version・未許可送信元・incognito は副作用なしで拒否する。許可メッセージは専用タブを開く。候補検索やファイル読み込みを background で実行しない。
+VimDF background は `runtime.onMessageExternal` で、設定で明示許可した Vimium-C 拡張 ID からの `{type:"vimdf.openLocalBrowser",version:1}` だけを受け付ける。`sender.id` を検証し、メッセージ内の `from` 文字列を認証に使わない。許可 ID の初期値は空。別ストア版・開発版の ID も利用者が登録できる。通常の内部 `onMessage` 処理とは分離する。
 
-Vimium-C 設定例（ADDONID を VimDF の拡張 ID に置換）：
+メッセージのキーは `type` と `version` に限定する。URL、絶対パス、コード、`rootId`、`primaryId` を受信しない。不正型・追加フィールド・未対応バージョン・未許可送信元・incognito は副作用なしで拒否する。許可メッセージは専用タブを開くだけで、フォルダ選択・権限要求・列挙・プライマリー変更を実行しない。
+
+Vimium-C 設定例（`ADDONID` を VimDF の拡張 ID に置換）：
 
 ```text
 # Custom key mappings
@@ -19,22 +25,113 @@ map <v-vimdf> sendToExtension id="ADDONID" raw data={"type":"vimdf.openLocalBrow
 vimdf: vimium://run/<v-vimdf> VimDF local PDFs
 ```
 
-設定は利用者が追加する。上記の bare keyword 確定と拡張 ID の差し替えは対象 Vimium-C バージョンで確認し、動作しない場合は正しい設定例へ修正する。既存の他の検索エンジン定義を上書きしない。
+設定は利用者が追加する。bare keyword の確定と ID の差し替えは対象 Vimium-C バージョンで検証し、動作しない場合は設定例を修正する。
 
-## フォルダと操作
+## 登録とプライマリー
 
-初回は専用ページの「フォルダを選ぶ」ボタンまたは Enter によるユーザー操作で showDirectoryPicker({mode:"read"}) を呼ぶ。外部メッセージから自動で標準ダイアログを開かない。選択のキャンセルは正常な取消として扱う。読取専用 directory handle を IndexedDB に保存し、再起動時は queryPermission を確認する。未許可ならユーザー操作から requestPermission を呼ぶ。権限拒否・失効時は列挙を行わない。保存と権限確認の例外は画面で説明し、再選択できる。絶対パスを復元できるとは仮定しない。アクセス対象は登録した1フォルダとその子孫のみ。親への移動は登録ルートまで。
+登録フォルダは `{id,handle}` の組で、登録順を保持する。`id` は登録時に生成する UUID、`handle` は読取用 `FileSystemDirectoryHandle`。表示名や絶対パスを識別子にしない。保存形式は IndexedDB 内の `{version:1,roots:[{id,handle}],primaryId}`。空の場合は `roots:[]` と `primaryId:null`、登録がある場合は `primaryId` が必ず登録済みの 1 件を指す。
 
-一覧はディレクトリ優先、次に名前順（比較規則はコードポイント順で固定）。通常ファイルは拡張子 .pdf のみ、大文字小文字を区別しない。名前は textContent で表示する。現在のディレクトリだけを列挙し、再帰的全ディスク検索はしない。j/k または矢印で選択、gg/G で先頭/末尾、l/Enter でディレクトリへ移動または PDF を開く、h で親へ。移動後は先頭を選択する。/ で名前の部分一致フィルタに入り、入力中の j/k は文字として扱う。Enter で入力モードを抜け、Esc はフィルタ解除。空一覧は選択なし。選択範囲は端で止まり循環しない。
+- 初回登録を自動でプライマリーにする。追加登録では現在のプライマリーを維持する。
+- 起動時にプライマリーのルートを開く。直前に開いていた子フォルダや、別の開始位置を保存する設定は今回含めない。
+- 登録フォルダ一覧で選択を動かすだけでは変更しない。`Enter` または `l` の確定で保存し、そのルートを開く。
+- 同じ実フォルダは `isSameEntry()` で重複判定し、既存 ID を再利用する。重複登録で ID・順序・プライマリーを変更しない。同名の別フォルダはそれぞれ登録できる。
+- 標準の `showDirectoryPicker()` は 1 回につき 1 フォルダを選ぶ。複数登録は「フォルダを追加」を繰り返す操作で実現する。
+- 取消・権限拒否・比較失敗・保存失敗で、登録やプライマリーを途中まで変更しない。保存完了後にメモリー上の状態を公開する。
+- 設定画面から登録を解除できる。非プライマリーの解除では現在値を維持し、プライマリーの解除では登録順で最初の残存フォルダを選ぶ。最後の解除で空にする。残存フォルダの権限が失効していても、勝手に別のフォルダへ置き換えない。解除は保存ハンドルを除く操作で、実ファイルを削除しない。
 
-PDF は file handle.getFile() のバイト列を既存 PDF.js Viewer に渡す。blob URL は輸送に使えても永続 identity に使わない。登録ルート UUID と相対パスを元に安定した専用 identity を生成し、ページ位置・マーク・パスワードの既存保存処理と接続する。異なる登録ルートの同名 PDF は別文書。改名・移動後は別文書として扱う。ルート解除で handle を消去する。API 非対応時は既存の通常ファイル選択へフォールバックし、Vim 操作できると表示しない。
+登録ルートを越えて OS 上の親を発見・列挙しない。`h` で戻れる最上部は、VimDF が作る仮想的な登録フォルダ一覧。追加・切り替えにより、離れた場所にある複数フォルダを扱える。登録ルートの子孫も別途登録できるが、それぞれの登録 ID は独立する。
 
-## 実装契約と検証
+## 画面とキー操作
 
-tests/local-browser.test.mjs は、将来の src/local-browser/model.ts が export する acceptExternalOpen(message,sender,allowedIds) と LocalBrowser を検証する。LocalBrowser は列挙・read/open を依存注入し、entries,selectedIndex,filter を公開する。constructor(root,{openPdf,rootId})、refresh()、key(key)、setFilter(text)、enter()、parent() が非 DOM の契約。enter は選択ファイルの File と stable identity を openPdf に渡す。フォルダ handle は標準の kind/name/values/getFile を利用する。
+画面は未登録・フォルダ内一覧・登録フォルダ一覧・権限確認の 4 状態。登録フォルダ一覧は登録順で表示し、プライマリーを印で示す。フォルダ内一覧から戻ったときは現在のプライマリーを選択する。
 
-エンジンの自動テストに加えて、実装時は外部メッセージ受信の配線、設定例、IndexedDB でのハンドル再利用、ユーザージェスチャ必須の権限再要求、権限拒否・取消、遅い列挙結果の競合、フォルダ変更時の選択、検索入力へのキー配送、HTML 名の安全な描画、既存 PDF 保存機能への identity 接続を統合テストする。専用ページは Vimium-C の content script に頼らずキーを自前処理する。
+| 場面 | 操作 | 結果 |
+| --- | --- | --- |
+| 未登録 | `Enter` / 「フォルダを追加」 | 標準ダイアログを開き、初回登録を保存して開く。取消は未登録のまま |
+| フォルダ内・登録一覧 | `j` / `k`、上下矢印 | 選択を移動。端で止まり、循環しない |
+| フォルダ内・登録一覧 | `g` を 2 回 / `G` | 先頭 / 末尾へ移動 |
+| フォルダ内 | `Enter` / `l` | 子フォルダへ移動、または PDF を開く |
+| フォルダ内 | `h` | 子フォルダから親へ。登録ルートでは登録フォルダ一覧へ |
+| 登録一覧 | `Enter` / `l` | 選択した登録をプライマリーとして保存し、ルートを開く |
+| 登録一覧 | `a` / 「フォルダを追加」 | 登録を追加し、その行を選択。既存プライマリーは維持 |
+| 登録一覧 | `h` | その場に留まる |
+| フォルダ内・登録一覧 | `/` | 名前の絞り込み入力へ |
+| 絞り込み入力 | `Enter` | 入力モードを終了するだけ。開くにはもう一度確定 |
+| 絞り込み中 | `Esc` | 入力モードを終了し、絞り込みを解除 |
+| 絞り込みのない登録一覧 | `Esc` | 切り替えを取消。直前のフォルダ内の絞り込み・選択を復元 |
+| 権限確認 | `Enter` / 「読取を許可」 | 明示操作から再許可を要求。許可・保存成功後に開く |
+| 権限確認 | `Esc` | 登録一覧へ戻る。プライマリーは維持 |
 
-実機確認：Vomnibar 起動 → 初回許可 → フォルダ移動 → PDF 表示、ブラウザ再起動後の復元・再許可、既存 omnibox 動作、Brave/Chrome の差、API 非対応フォールバック。実機未確認の項目を「検証済み」と扱わない。
+フォルダ内一覧はディレクトリ優先、各種類の中は名前のコードポイント順。ファイルは拡張子 `.pdf` のみを大文字小文字を区別せず表示する。現在のディレクトリだけを列挙し、子孫を事前走査しない。フォルダ移動・プライマリー切り替え後は絞り込みを空にして先頭を選択する。空一覧の選択は `-1`、確定は何もしない。名前は `textContent` で表示する。
 
-RootAccess は同じ model.ts から export し、{load,save,clear,pick,newId} を注入する。保存値は {id,handle}。restore() は許可済みのみ返し、authorize() は明示操作から再許可し、choose() は新規フォルダを保存、forget() は保存ハンドルを削除する。読取権限は常に mode:"read"。非許可なら null、I/O 例外は呼び出し側が表示できるよう伝播する。自動テストの対象は純粋なモデル・起動検証・保存/権限制御までで、DOM・実ブラウザ統合は実装後の追加対象。
+絞り込みは大文字小文字を区別しない名前の部分一致。変更時に先頭を選択する。入力中の `j` / `k` / `h` / `l` / `g` / `G` は文字であり、移動コマンドを発火しない。文字列は DOM の `input` イベントから渡し、日本語 IME の合成中のキーは処理しない。Ctrl・Alt・Meta を伴うショートカットも処理しない。`gg` は独立した 2 回のキー押下で成立し、キーリピートや間に入った別コマンドで誤成立させない。`Enter` / `l` / `a` のリピートで開く・許可・追加を繰り返さない。
+
+追加・切り替え・列挙中は処理中を表示し、次の移動・確定を消費して重複処理を起こさない。エラー時も処理中状態を解除して再試行できる。登録一覧の取消はプライマリーを変更しない。起動時の権限確認から一覧へ戻った場合は、取消で戻れるフォルダ内画面がないため一覧に留まる。
+
+## 権限とブラウザの制約
+
+追加は明示的なキー・ボタン操作から `showDirectoryPicker({mode:"read"})` を呼ぶ。外部メッセージやページ起動から自動では開かない。取消の `AbortError` は正常な取消として扱い、その他の例外は画面で説明する。
+
+起動時は保存プライマリーの `queryPermission({mode:"read"})` だけを確認する。他の登録フォルダに対する権限要求や列挙は行わない。切り替え時もまず選択フォルダの権限を確認する。`prompt` / `denied` の場合は列挙もプライマリー変更もせず権限確認画面に移る。次の明示的な `Enter` / ボタン操作から `requestPermission({mode:"read"})` を呼ぶ。許可拒否ではその画面に留まり、`Esc` で登録一覧へ戻れる。
+
+権限付与後の保存失敗でも元のプライマリーを維持する。許可そのものはブラウザ側の状態なので取り消せるとは仮定しない。保存成功後に列挙・ファイル読取が失敗した場合は、新しいプライマリーを保持してエラーと再試行を提示する。保存が成功した状態を黙って巻き戻さない。権限失効と登録解除は別操作であり、失効だけで登録 ID を削除しない。
+
+Chrome / Chromium は保護対象の広いフォルダの選択を制限する。標準のホーム・Documents・Desktop・Downloads のフォルダ自体を登録できるとは保証せず、許可される子フォルダなどを選ぶ。`startIn` は標準ダイアログの初期位置で、VimDF のプライマリー設定やアクセス範囲ではない。`<all_urls>` などの拡張権限からファイルシステム全体への権限を推測しない。Native Messaging による全ディスク対応は今回の範囲外。
+
+専用タブで API の有無を検出し、非対応・無効の場合は理由を表示して既存の通常ファイル選択へ戻れるようにする。その場合にフォルダ登録やキー操作の対応を表示しない。Brave では API が無効な構成も考慮し、ブラウザ名だけで対応判定しない。保存ハンドルの復元、ユーザー操作からの許可要求、拡張専用ページでの API 利用を対象ブラウザで確認する。
+
+API の根拠： [File System Access 仕様](https://wicg.github.io/file-system-access/)（単一フォルダ選択、ユーザー操作、権限）、[Chrome の解説](https://developer.chrome.com/docs/capabilities/web-apis/file-system-access)（ハンドルの IndexedDB 保存）、[Chromium の権限実装](https://chromium.googlesource.com/chromium/src/+/main/chrome/browser/file_system_access/chrome_file_system_access_permission_context.cc)（保護パス）。これらは API の実現可能性の根拠であり、この拡張の実機検証結果ではない。
+
+## PDF の識別と表示
+
+PDF は `fileHandle.getFile()` の `File` を既存 PDF.js Viewer に渡す。blob URL は輸送に使えても、永続識別子にしない。登録ルート UUID とルートからの相対パスから安定した専用 identity を生成し、ページ位置・マーク・パスワードの既存保存処理と接続する。
+
+同じルートの同じ相対パスは、プライマリーを往復しても同じ identity。異なるルートや異なる子フォルダの同名 PDF は別文書。改名・移動後は別文書として扱う。登録を解除して登録し直した場合も新 UUID のため別文書になる。通常のプライマリー変更では UUID を再生成しない。ファイル読取に失敗した場合は Viewer を開かない。
+
+## 非 DOM モデルの実装契約
+
+`src/local-browser/model.ts` から次を export する。保存値の handle は IndexedDB で保存し、JSON 化しない。モデルの I/O 例外は画面側で表示・再試行できるよう伝播する。
+
+| Export | 契約 |
+| --- | --- |
+| `acceptExternalOpen(message,sender,allowedIds)` | 正確な外部起動契約だけに `true` を返す |
+| `LocalBrowser(root,{openPdf,rootId})` | `refresh()`、`key(key)`、`setFilter(text)`、`enter()`、`parent()`。公開状態は `entries`、`selectedIndex`、`filter`、`atRoot`。低レベルの `key('gg')` は先頭移動。`parent()` は登録ルートで止まり、仮想一覧はセッションが扱う。`enter()` は `openPdf(File,identity)` を呼ぶ |
+| `FolderRegistry({load,save,pick,newId})` | `roots`、`primaryId` を公開し、下記の非同期操作を提供する |
+| `LocalBrowserSession({registry,openPdf})` | `start()`、`key(event)`、`setFilter(text)`。公開状態は `view`（`empty` / `browse` / `roots` / `permission`）、`activeRootId`、`pendingRootId`、`entries`、`selectedIndex`、`filter`、`inputMode`（`normal` / `filter`）、`busy` |
+
+`FolderRegistry` の注入関数は `load():Promise<State|null>`、`save(State):Promise<void>`、`pick({mode:"read"}):Promise<DirectoryHandle>`、`newId():string`。`save` は 1 トランザクションで登録リストとプライマリーを保存する。`restore()` 前の初期状態は空。保存の必要な操作は、成功まで既存の状態を維持する。
+
+| Registry 操作 | 結果 |
+| --- | --- |
+| `restore()` | 保存された全登録を復元し、許可済みプライマリーの `{id,handle}` を返す。未登録・未許可は `null`。自動再許可や代替選択をしない |
+| `add()` | picker から取得し、重複比較・読取権限確認・必要な保存を経て登録を返す。取消・未許可は `null`。追加時に列挙はしない |
+| `activate(id)` | 登録済み ID の権限を問い合わせ、許可済みならプライマリーを保存して登録を返す。未許可は `null`。再許可要求はしない |
+| `authorize(id)` | 明示操作から読取再許可を要求し、許可と保存成功後に登録を返す。拒否は `null` |
+| `remove(id)` | 登録解除と次のプライマリーを一緒に保存する。ローカルファイルを変更しない |
+
+未知の ID の `activate()` / `authorize()` は例外にする。登録一覧の `entries` は `{id,name,isPrimary}` を公開する。画面表示名は `handle.name` を使用する。同名の登録の識別は ID で行い、実装時は登録時刻や短い ID などで区別できる表示を用意する。
+
+Session の `key(event)` は `{key,repeat?,ctrlKey?,altKey?,metaKey?,isComposing?}` を受け取る。コマンドを消費した場合は `true`、入力文字・IME・修飾キー・未対応キーは `false` を返す。DOM 側は `true` の場合に `preventDefault()` する。`g` の連続押下の解釈、入力モード、権限画面、処理中の重複防止を Session が担う。`setFilter()` は DOM の入力イベントからテキストを更新する操作で、呼ぶだけでは入力モードへ移らない。
+
+## 受け入れテストと実装後の確認
+
+`npm run test:local-browser` は `tests/local-browser*.test.mjs` をすべて実行する。
+
+| テストファイル | 確認する要件 |
+| --- | --- |
+| `tests/local-browser.test.mjs` | 外部起動の制限、一覧・名前検索、ルート境界、PDF 読取と identity、列挙失敗、非再帰走査 |
+| `tests/local-browser-registry.test.mjs` | 複数登録、プライマリー、不変 ID、重複、保存・復元、取消、権限拒否と明示再許可、I/O 失敗時の整合性、登録解除 |
+| `tests/local-browser-session.test.mjs` | 起動画面、`h` で登録一覧、確定と取消、再起動後の既定値、キーイベント・入力・IME、権限画面、追加、切り替え後の identity、非同期中の重複操作 |
+| `tests/helpers/local-browser-fixtures.mjs` | handle・保存・picker・PDF 表示の注入用フェイク。権限と I/O 呼出しを記録し、実ブラウザの代わりにモデル契約を検証する |
+
+仕様段階ではモデル未実装を全ケースで明示的な失敗として扱う。`skip` や仮のモデルで成功扱いにしない。機能の実装完了条件はモデルテストの成功に加え、以下の統合・実機確認を満たすこと。
+
+- Vimium-C の設定例から専用タブへ起動し、外部メッセージによる勝手な登録・切り替えがない。
+- 実 IndexedDB で複数 handle を保存し、拡張・ブラウザ再起動後も登録 ID とプライマリーを復元する。複数タブからの更新を直列化して、古い状態で登録を消さない。
+- 標準 picker と `requestPermission()` を実際のユーザー操作内で呼ぶ。途中の非同期処理でユーザー操作の効力を失わせない。拒否・取消・失効・読取中の削除・保存失敗を画面で回復できる。
+- DOM の入力・keydown・IME を接続し、二重処理を防ぐ。権限画面・登録一覧でフォーカスを適切に移し、選択とプライマリーを画面と支援技術に伝える。
+- 遅い列挙結果が切り替え後の一覧を上書きしない。HTML を含むファイル名を安全に表示する。
+- Viewer への identity 接続で既存のページ位置・マーク・パスワードを保持し、PDF 本文検索が動作する。登録解除は既存 PDF 保存データの一括削除を兼ねない。
+- Chrome / Brave の対象バージョン、保護フォルダ、API 無効時の通常ファイル選択、既存 omnibox の動作を確認する。
+
+モデルテストだけで DOM・権限保持・実ブラウザ対応を検証済みとは扱わない。

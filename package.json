@@ -12,7 +12,7 @@
     "preview": "vite preview",
     "test:password": "node --test tests/password*.test.mjs",
     "test:scroll": "node --experimental-transform-types --test tests/continuous-scroll.test.mjs",
-    "test:local-browser": "node --experimental-transform-types --test tests/local-browser.test.mjs"
+    "test:local-browser": "node --experimental-transform-types --test tests/local-browser*.test.mjs"
   },
   "devDependencies": {
     "@crxjs/vite-plugin": "^2.4.0",
