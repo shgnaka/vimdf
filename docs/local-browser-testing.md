@@ -9,10 +9,26 @@
 | 既存モデル | 78 | 成功。フェイクの handle / I/O でモデル契約を検証 |
 | 既存パスワード / スクロール | 34 / 14 | 成功。既存機能の回帰確認 |
 | Node の統合契約 | 50 | 成功。保存の commit / abort、競合、起動、PDF controller と配布 build を検証 |
-| Chromium の拡張・DOM・native IDB | 18 | 成功。CI で実ハンドルの clone、画面、パスワード・検索・マーク、履歴、通常 URL Viewer を検証 |
+| Chromium の拡張・DOM・native IDB | 27 | 既存 18 件は成功実績あり。監査で不足が判明した 5 要件に 9 件を追加。追加後の結果は後述 |
 | 実 Vimium-C / Chrome / Brave | 8 手順 | 未実施。後述の MR-01〜08 を完了条件にする |
 
-確認日：2026-10-09。Node 合計 176 件、Chromium 18 件が成功し、[PR の CI 実行](https://github.com/shgnaka/vimdf/actions/runs/37922809087) でも統合契約・ブラウザの両 job が成功。通常 URL の Viewer bootstrap、履歴で保持中の PDF を再開する回帰試験を 2 件追加した。実 Vimium C / Brave / OS picker の確認は未実施。
+確認日：2026-10-09。追加前は Node 合計 176 件、Chromium 18 件が成功し、[PR の CI 実行](https://github.com/shgnaka/vimdf/actions/runs/37922809087) でも統合契約・ブラウザの両 job が成功。ただし仕様の一部を検査できていなかったため、全要件の実装完了とは扱わない。実 Vimium C / Brave / OS picker の確認は未実施。
+
+### 監査で見つかった未充足の画面要件
+
+`local-browser-acceptance.spec.mjs` に追加した 9 件は、既存モデル・controller の戻り値だけでなく本番 DOM と実際の利用者操作を検査する。追加後の実行結果は確認待ち。未実装を `skip` / `todo` / `test.fail` や固定の失敗で隠さず、通常の失敗として返す。
+
+| 仕様の不足していた検査 | 追加テスト |
+| --- | --- |
+| 選択行を表示範囲へ追従 | PDF 一覧と登録一覧の長いリスト。G / gg / j / k / 矢印で選択し、scroll ancestor の clipping を含む可視領域に行の 99% 以上が収まる。選択だけでは保存値が変わらない |
+| 破棄された PDF 履歴の再選択案内 | 本番 Viewer で A → B と交換後、A の token を持つ履歴境界へ進む。再選択案内が見え、一覧・filter・選択を保持し、identity を fetch しない |
+| 通常 Viewer 空画面の起動導線 | 利用者が導線を押すと通常の専用タブを 1 件だけ作り、旧 Viewer を置き換えず picker を自動表示しない |
+| 空フォルダと検索結果なしを区別 | 空フォルダの絞り込み前後で案内を変え、解除後に元へ戻す。登録一覧の検索結果なしでは存在しない行の確定を案内しない |
+| API 非対応時のフォルダ操作 | フォルダのボタン・検索欄・一覧・キー案内を隠す。キーでも登録やエラーを生まない。正の対照として通常ファイル選択の bytes で PDF を開ける |
+
+履歴テストは古い native history state を準備する境界注入だけを行い、controller・popstate・案内文を代替実装しない。長い一覧は native OPFS にデータを作り、スクロール API や CSS を指定せず結果を検査する。表示文は意味を検査し、全文の固定や Figma の配置・色には依存しない。
+
+[対応環境の管理案](local-browser-compatibility.md) と併せて、ブラウザ実行ごとに実版などの `environment.json` を report に添付する。自動試験の環境と実 Chrome / Brave / Vimium-C の対応保証を混同しない。
 
 ```sh
 npm ci
@@ -69,11 +85,11 @@ Node の controller テストは runtime の呼び出しを検証する。実際
 | 条件 | 自動テスト | 追加の実機確認 |
 | --- | --- | --- |
 | UI-01 | `local-integration-build.test.mjs`：配布 HTML / JS / CSS、公開範囲、既存 MIME | MR-01：未パッケージ拡張を実際に導入 |
-| UI-02 | build / Session / browser：初回・最後の解除・API 非対応・DB 失敗 | MR-01：非対応構成の案内 |
+| UI-02 | build / Session / browser / acceptance：初回・最後の解除・空一覧の案内・API 非対応時の操作停止と file fallback・DB 失敗・通常 Viewer の導線 | MR-01：非対応構成の案内 |
 | UI-03 | Session / browser：busy 中の選択、検索入力・リピート・合成 IME | MR-02：Windows の日本語 IME |
-| UI-04 | Session / browser：クリック、filtered index、解除 snapshot、HTML 名、native button の Enter | MR-02：focus と画面の見分け |
+| UI-04 | Session / browser / acceptance：クリック、filtered index、解除 snapshot、HTML 名、native button の Enter、長い一覧の選択行追従 | MR-02：focus と画面の見分け |
 | UI-05 | browser：picker / 再許可の activation、取消・失敗後の再試行 | MR-01 / 07：OS dialog と実権限 |
-| UI-06 | controller / Session / browser：H、戻り先、filter・選択、履歴 token、再読込 | MR-02：ブラウザの戻る・進む |
+| UI-06 | controller / Session / browser / acceptance：H、戻り先、filter・選択、履歴 token、破棄文書の再選択案内、再読込 | MR-02：ブラウザの戻る・進む |
 | DB-01 | storage / browser：envelope、ID / 順序 / primary、native handle の clone・再読込 | MR-01：ブラウザ・拡張の再起動 |
 | DB-02 | storage：put 成功後の abort、commit 後の別 transaction による読取 | MR-07：実保存障害からの回復 |
 | DB-03 | storage：同一 revision の競合・敗者の再保存禁止・明示 load 後の再試行 | MR-07：複数通常タブ |

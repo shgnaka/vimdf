@@ -1,7 +1,7 @@
 import { test as base, expect, chromium } from 'playwright/test';
 import { mkdtemp, rm, readFile } from 'node:fs/promises';
 import { existsSync } from 'node:fs';
-import { tmpdir } from 'node:os';
+import { tmpdir, platform, release, arch } from 'node:os';
 import { join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { lessonPdf } from '../helpers/pdf-bytes.mjs';
@@ -54,6 +54,15 @@ export const test = base.extend({
         };
       });
       const setupPage = await context.newPage(); await setupPage.goto(url('src/options/options.html'));
+      const cdp = await context.newCDPSession(setupPage);
+      const browserVersion = await cdp.send('Browser.getVersion'); await cdp.detach();
+      const playwrightVersion = JSON.parse(await readFile(resolve(repository, 'node_modules/playwright/package.json'), 'utf8')).version;
+      await testInfo.attach('environment.json', { contentType: 'application/json', body: Buffer.from(JSON.stringify({
+        testedCommit: process.env.GITHUB_SHA ?? null, workflowRun: process.env.GITHUB_RUN_ID ?? null,
+        os: { platform: platform(), release: release(), arch: arch() }, node: process.version,
+        playwright: playwrightVersion, browser: browserVersion, extensionId: id,
+        scope: 'Chromium automation; OPFS handles; controlled picker/permission boundary; test sender, not Vimium C',
+      }, null, 2)) });
       const callerPage = await context.newPage(); await callerPage.goto(`chrome-extension://${callerId}/caller.html`);
       const extension = {
         context, worker, id, callerId, url, setupPage,
@@ -82,6 +91,12 @@ export const test = base.extend({
             await write(a, '資料 # %.PDF', bytes); await write(b, 'lesson.pdf', bytes);
             await write(a, 'locked.pdf', Array.from(atob(cipher), c => c.charCodeAt(0)));
             if (options.hostile) await write(a, '<img src=x onerror=alert(1)>.pdf', bytes);
+            if (options.emptyFolder) await a.getDirectoryHandle('empty', { create: true });
+            for (let i = 0; i < (options.pdfCount ?? 0); i++) await write(a, `document-${String(i).padStart(3, '0')}.pdf`, bytes);
+            const roots = [{ id: rootA, handle: a }, { id: rootB, handle: b }];
+            for (let i = 0; i < (options.extraRoots ?? 0); i++) {
+              roots.push({ id: crypto.randomUUID(), handle: await opfs.getDirectoryHandle(`Folder-${String(i).padStart(3, '0')}`, { create: true }) });
+            }
             const db = await new Promise((resolve, reject) => {
               const r = indexedDB.open('vimdf.local-browser', 1);
               r.onupgradeneeded = () => r.result.createObjectStore('registry');
@@ -91,7 +106,7 @@ export const test = base.extend({
               await new Promise((resolve, reject) => {
                 const tx = db.transaction('registry', 'readwrite');
                 tx.objectStore('registry').put({ revision: 1, state: { version: 1,
-                  roots: [{ id: rootA, handle: a }, { id: rootB, handle: b }], primaryId: rootA } }, 'state');
+                  roots, primaryId: rootA } }, 'state');
                 tx.oncomplete = resolve; tx.onabort = () => reject(tx.error);
               });
             } finally { db.close(); }
