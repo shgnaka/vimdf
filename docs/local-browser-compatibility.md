@@ -1,39 +1,42 @@
-# ローカル PDF ブラウザの対応環境管理案
+# ローカル PDF ブラウザの対応方針と Vimium 連携
 
-これは管理方法の提案。最低対応版・対応を保証する OS / ブラウザ / Vimium-C の範囲はまだ確定していない。自動テストの成功を、別 OS、製品 Chrome / Brave、実 Vimium-C の確認結果として扱わない。
+## 対応環境は機能の条件で決める
 
-## 機能と確認環境を分ける
+対象は Manifest V3 の拡張を実行できるデスクトップの Chromium 系ブラウザ。OS・ブラウザ製品・各過去版の全組み合わせを表で管理したり、その全件確認をリリース条件にしたりしない。OS 別の処理が必要になった場合や再現する不具合が見つかった場合に、該当環境の情報を記録する。
 
-| 機能 | 必要な確認 | 現在の証拠 |
+拡張の基本的な互換性と、任意機能の API 利用可否は分ける。フォルダ登録・移動には専用ページでの `showDirectoryPicker()`、native directory handle の読取・権限操作、IndexedDB への保存が必要。ブラウザ名だけで成功と判断せず、API の存在を検出し、呼出し・保存時の例外も扱う。API がない構成ではフォルダ操作を停止し、通常の PDF ファイル選択を案内する。保存 DB の破損や権限失効を、API がない状態と同一視しない。
+
+Chrome の公式資料は File System Access API を多くの Chromium 系ブラウザで利用できるとし、Brave はフラグによる有効化が必要な例として挙げている。したがって「Chromium 系なのでフォルダ機能も常に使える」とは保証しない。VimDF からブラウザ設定を変更せず、実行環境の利用可否を表示する。今回、この任意機能のための一律の最低 Chrome 版は追加しない。`minimum_chrome_version` が必要になったときは拡張全体で必須の API に基づいて決める。
+
+## Vimium-C と Vimium の区別
+
+フォルダ画面と PDF Viewer のキー操作は VimDF 自身が実装する。Vimium-C のインストールは閲覧・登録・移動の必須条件ではなく、Vimium を使用していても VimDF の toolbar action や設定画面から利用できる。
+
+現在の Vomnibar の `vimdf` 起動設定は Vimium-C 専用。Vimium-C の `sendToExtension` で VimDF に exact payload を送信する。通常の Vimium のコマンド定義にはこのコマンドがなく、同じ設定例を適用できない。Vimium の URL を開く `createTab` は別機能であり、非公開の専用ページへの直接起動は今回の確認済み経路に含めない。Vimium 対応のために専用ページを `web_accessible_resources` として公開する変更も行わない。
+
+| 接続に必要な機能 | 上流の導入版 | VimDF での位置付け |
 | --- | --- | --- |
-| 通常の PDF 閲覧 | URL / MIME / ファイル選択、共有 Viewer | Chromium CI の通常 URL・File bytes 試験。MIME・印刷・保存は MR-04 |
-| 登録フォルダの移動・保存 | 拡張ページの File System Access API、native handle の IDB 保存、OS picker、許可保持 | Chromium CI は OPFS handle と制御した picker / permission 境界。実 OS は MR-01 / 07 |
-| Vimium-C 起動 | 対象版の設定例、実 Vomnibar、ID 許可と返信 | Chromium CI の送信元はテスト拡張。実 Vimium-C は MR-03 |
-| API 非対応時のファイル選択 | フォルダ操作を表示・実行せず、File bytes で PDF を開ける | API を除いた Chromium の受け入れテスト |
+| `sendToExtension` | Vimium-C 1.87.0 | 外部メッセージ起動に必要。`id`・`raw`・`data` の契約も確認する |
+| `vimium://run/<key>` | Vimium-C 1.93.0 | 現在の Vomnibar 起動設定例に必要 |
+| `raw` と検索設定の `blank=` を含む設定例全体 | 実機での確認版は未記録 | 必要機能の版数だけで全体の動作を確認済みとしない |
 
-機能ごとに「自動試験成功」「実機確認済み」「不具合検出」「未確認」「非対応」を記録する。「最新で動いた」を過去の全バージョンに一般化しない。フォルダ機能が使えなくても通常 PDF 閲覧を止める理由にはしない。
+以上から現設定例には少なくとも Vimium-C 1.93.0 以降が必要、という機能上の下限を明示する。これは 1.93.0 を最低保証版として試験したという意味ではない。MR-03 では使用した Vimium-C の版・配布元・拡張 ID、VimDF commit、ブラウザ版と結果を 1 件の記録に残し、その版を動作確認版として案内する。過去の全版に対する対応表は作らない。
 
-## 記録と更新
+## 最小限の検証と記録
 
-Playwright は package-lock と固定された依存版で再現する。各ブラウザテストは `environment.json` を report に添付し、実 browser product / userAgent / revision、OS kernel / architecture、Node、Playwright、拡張 ID、試験 commit / workflow run を記録する。現在の workflow は report と trace を 14 日保存する。リリース時の根拠は期限付き artifact の URL だけにせず、該当 commit と確認結果をこの文書・リリース記録に残す。
+CI は現在の bundled Chromium で回帰試験を継続する。既存の `environment.json` の自動添付は不具合再現の補助として維持するが、OS・ブラウザ版の対応を認定する仕組みとは扱わない。新しい手動の環境一覧や全組み合わせを管理する CI job は追加しない。
 
-実機の候補はまず Windows 11 の Chrome / Brave と実 Vimium-C。次の表は空欄を推測で埋めず、MR-01〜08 の結果を記録してから更新する。
+実機確認は [MR-01〜08](local-browser-testing.md#実機確認の手順と記録) の機能別手順を代表環境で行い、OS picker、再起動後の handle、権限、実 Vimium-C の設定例など CI の代替できない境界を確認する。Chrome と Brave の両方で全手順を繰り返すことは一律の条件にしない。API の無効化など製品差が問題になった場合は、その差に関係する手順だけを追加する。成功した自動試験・実機で確認した事実・未確認の項目は区別し、未確認を非対応とも確認済みとも表示しない。
 
-| 確認日 | VimDF commit | OS / 版 | ブラウザ / 完全な版 | Vimium-C 版・配布元 | 機能 / MR ID | 結果・再現手順 | 証拠 |
-| --- | --- | --- | --- | --- | --- | --- | --- |
-| 未実施 | — | Windows 11 | Chrome：未記録 | 未記録 | MR-01〜08 | 未確認 | — |
-| 未実施 | — | Windows 11 | Brave：未記録 | 未記録 | MR-01〜08 | 未確認 | — |
+通常の登録管理は [フォルダごとの登録管理仕様](local-folder-management.md) に従う。全登録を初期化する操作は今回採用しない。
 
-最低対応版を決めたら、その版と更新版の確認結果を別行で保つ。ブラウザ / Vimium-C / Playwright を更新したとき、新しい Web API を必須にしたとき、関連する不具合を修正したときに該当機能を再確認する。CI の bundled Chromium は継続回帰確認、製品ブラウザの実機試験は対応を保証する範囲の根拠とする。
+## 根拠
 
-## 最低 Chrome 版を確定する条件
+- [Chrome の File System Access API 解説](https://developer.chrome.com/docs/capabilities/web-apis/file-system-access)：Chromium 系での利用、Brave の例外、機能検出。
+- [Chrome の minimum_chrome_version](https://developer.chrome.com/docs/extensions/reference/manifest/minimum-chrome-version)：拡張全体のインストール・更新条件。
+- [Vimium-C の release notes](https://github.com/gdh1995/vimium-c/blob/master/RELEASE-NOTES.md)、[inner URLs](https://github.com/gdh1995/vimium-c/wiki/Vimium-inner-URLs)：1.87.0 の `sendToExtension`、1.93.0 の `vimium://run`。
+- [Vimium-C の外部メッセージ仕様](https://github.com/gdh1995/vimium-c/wiki/Send-dynamic-messages-to-other-extensions)：`id`・`data`・`raw`。
+- [Vimium のコマンド定義](https://github.com/philc/vimium/blob/master/background_scripts/all_commands.js)：通常の Vimium の現行コマンド。`createTab` と Vimium-C の接続コマンドを混同しない。
+- [Playwright の拡張テスト](https://playwright.dev/docs/chrome-extensions)：bundled Chromium の persistent context を利用する自動試験。
 
-`minimum_chrome_version` は拡張全体のインストール・更新を制限する。任意のフォルダ機能や MIME 経路のためだけに引き上げず、拡張全体で必須となる API の最低版と試験結果から決める。フォルダ機能は実 API の有無・利用可否でも判定する。現段階では manifest に最低版を追加しない。
-
-公式根拠： [Chrome の minimum_chrome_version](https://developer.chrome.com/docs/extensions/reference/manifest/minimum-chrome-version)、[Playwright の拡張テスト](https://playwright.dev/docs/chrome-extensions)。Playwright の公式手順は bundled Chromium の persistent context を用い、製品 Chrome / Edge と同一の拡張ロード方法を保証しない。
-
-## 登録だけの初期化は別の未決定事項
-
-登録 DB にあるルート ID・directory handle・登録順・primary を空にして再登録できるようにする復旧操作を指す。実フォルダ・実 PDF・一般設定・Vimium-C 接続設定・保存済みのページ位置 / マーク / ハイライト / パスワードを削除する操作ではない。
-
-ただし再登録では新しい UUID を使う既存仕様のため、残った PDF 保存データが新登録へ自動的に結び付くとは限らない。破損時にこの操作を用意するか、表示・確認・他タブの扱い・復旧手順をどうするかは未決定。今回のテスト追加では初期化機能を実装・実行しない。
+上流資料の確認日：2026-10-09。上流の API・コマンド調査と、この拡張を実機で確認した結果は別の証拠として扱う。

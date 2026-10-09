@@ -8,7 +8,7 @@ Vimium-C の Vomnibar で `vimdf` を確定すると、VimDF 専用タブで登�
 
 [統合仕様](local-browser-integration.md) に同一タブ内の一覧 / PDF 切り替え、IDB の revision 比較、Viewer の文書交換、外部起動と実機の受け入れ条件を定義する。
 
-Vomnibar の候補にローカルファイルを追加しない。VimDF は `omnibox.keyword` を登録せず、既存のアドレスバーや他の検索エンジンの設定を変更しない。アーカイブされた別の omnibar プロジェクトには依存しない。対象は File System Access API を利用できるデスクトップブラウザの拡張専用タブ。Chrome と Brave の対応状況・権限保持は実機確認を必要とする。
+Vomnibar の候補にローカルファイルを追加しない。VimDF は `omnibox.keyword` を登録せず、既存のアドレスバーや他の検索エンジンの設定を変更しない。アーカイブされた別の omnibar プロジェクトには依存しない。対象はデスクトップの Chromium 系ブラウザの拡張専用タブ。フォルダ機能は File System Access API の利用可否で判定する。[対応方針](local-browser-compatibility.md) に従い、代表環境の実機確認と CI の証拠を分ける。通常の PDF 利用は Vimium-C を必須としない。
 
 この画面の「検索」は、現在のフォルダのフォルダ名・PDF 名、または登録フォルダ名の絞り込み。全登録フォルダの再帰検索や PDF 本文の横断検索は含めない。PDF を開いた後の本文検索は既存 Viewer の機能を利用する。
 
@@ -27,7 +27,7 @@ map <v-vimdf> sendToExtension id="ADDONID" raw data={"type":"vimdf.openLocalBrow
 vimdf: vimium://run/<v-vimdf> blank=vimium://run/<v-vimdf> VimDF local PDFs
 ```
 
-設定は利用者が追加する。bare keyword の確定と ID の差し替えは対象 Vimium-C バージョンで検証し、動作しない場合は設定例を修正する。
+設定は利用者が追加する。現設定例には必要機能の導入版から少なくとも Vimium-C 1.93.0 以降が必要。これは最低版の実機検証済みを意味しない。bare keyword の確定と ID の差し替えは実際の使用版で検証して確認版を記録し、動作しない場合は設定例を修正する。通常の Vimium には同じ設定例を適用しない。VimDF の toolbar action / 設定から専用画面を利用できる。
 
 ## 登録とプライマリー
 
@@ -42,6 +42,8 @@ vimdf: vimium://run/<v-vimdf> blank=vimium://run/<v-vimdf> VimDF local PDFs
 - 専用画面の登録一覧から登録を解除できる。設定画面からもこの一覧へ移動できる。非プライマリーの解除では現在値を維持し、プライマリーの解除では登録順で最初の残存フォルダを選ぶ。最後の解除で空にする。残存フォルダの権限が失効していても、勝手に別のフォルダへ置き換えない。解除は保存ハンドルを除く操作で、実ファイルを削除しない。
 
 登録ルートを越えて OS 上の親を発見・列挙しない。`h` で戻れる最上部は、VimDF が作る仮想的な登録フォルダ一覧。追加・切り替えにより、離れた場所にある複数フォルダを扱える。登録ルートの子孫も別途登録できるが、それぞれの登録 ID は独立する。
+
+通常の編集は、この登録一覧でフォルダごとに追加・解除・プライマリー選択・再許可を行う。全登録の初期化は今回採用しない。解除確認と次の既定、保存失敗、再登録、DB 復元不能時の扱いは [フォルダごとの管理仕様](local-folder-management.md) に従う。
 
 ## 画面とキー操作
 
@@ -119,7 +121,7 @@ Session の `key(event)` は `{key,repeat?,ctrlKey?,altKey?,metaKey?,isComposing
 
 `npm run test:local-browser` は `tests/local-browser*.test.mjs` をすべて実行する。
 
-画面・IndexedDB・共有 Viewer・外部起動の追加テストは、別の `npm run test:local-integration` と `npm run test:local-browser:browser` で実行する。[テスト契約と対応表](local-browser-testing.md) を参照。既存モデル 78 件、統合契約 50 件、既存回帰 48 件をそれぞれ検証する。Chromium の拡張・DOM 試験と実 Chrome / Brave / Vimium C の手動確認は別に記録する。
+画面・IndexedDB・共有 Viewer・外部起動の追加テストは、別の `npm run test:local-integration` と `npm run test:local-browser:browser` で実行する。[テスト契約と対応表](local-browser-testing.md) を参照。既存モデル 78 件、統合契約 50 件、既存回帰 48 件をそれぞれ検証する。Chromium の拡張・DOM 試験と代表環境での実 Vimium-C / OS picker の確認は別に記録する。
 
 | テストファイル | 確認する要件 |
 | --- | --- |
@@ -137,6 +139,6 @@ Session の `key(event)` は `{key,repeat?,ctrlKey?,altKey?,metaKey?,isComposing
 - DOM の入力・keydown・IME を接続し、二重処理を防ぐ。権限画面・登録一覧でフォーカスを適切に移し、選択とプライマリーを画面と支援技術に伝える。
 - 遅い列挙結果が切り替え後の一覧を上書きしない。HTML を含むファイル名を安全に表示する。
 - Viewer への identity 接続で既存のページ位置・マーク・パスワードを保持し、PDF 本文検索が動作する。登録解除は既存 PDF 保存データの一括削除を兼ねない。
-- Chrome / Brave の対象バージョン、保護フォルダ、API 無効時の通常ファイル選択、既存 omnibox の動作を確認する。
+- 代表環境で保護フォルダ、API 無効時の通常ファイル選択、既存 omnibox の動作を確認する。製品ごとの API 差には関連する追加確認を行い、全 OS・全ブラウザ版の確認表は作らない。
 
 モデルテストだけで DOM・権限保持・実ブラウザ対応を検証済みとは扱わない。

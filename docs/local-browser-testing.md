@@ -10,13 +10,13 @@
 | 既存パスワード / スクロール | 34 / 14 | 成功。既存機能の回帰確認 |
 | Node の統合契約 | 50 | 成功。保存の commit / abort、競合、起動、PDF controller と配布 build を検証 |
 | Chromium の拡張・DOM・native IDB | 27 | 19 成功・8 失敗。既存 18 件と通常ファイル選択の対照が成功。追加した検査で 5 要件の実装漏れを検出 |
-| 実 Vimium-C / Chrome / Brave | 8 手順 | 未実施。後述の MR-01〜08 を完了条件にする |
+| 代表環境での実 Vimium-C / OS picker | 8 手順 | 未実施。後述の MR-01〜08 を確認する。全 OS・全ブラウザ版の組み合わせは要求しない |
 
 確認日：2026-10-09。追加前は Node 合計 176 件、Chromium 18 件が成功し、[PR の CI 実行](https://github.com/shgnaka/vimdf/actions/runs/37922809087) でも統合契約・ブラウザの両 job が成功。ただし仕様の一部を検査できていなかったため、全要件の実装完了とは扱わない。実 Vimium C / Brave / OS picker の確認は未実施。
 
 ### 監査で見つかった未充足の画面要件
 
-`local-browser-acceptance.spec.mjs` に追加した 9 件は、既存モデル・controller の戻り値だけでなく本番 DOM と実際の利用者操作を検査する。[追加後の CI 記録](https://github.com/shgnaka/vimdf/actions/runs/37927302944)（`5522573e93b01e76b0fad4fcf41aee6f814efead`）は 19 成功・8 失敗。Node 176 件と build は成功。追加した 8 件の失敗は下表の未実装によるものであり、既存 18 件と file fallback の正の対照 1 件は成功。未実装を `skip` / `todo` / `test.fail` や固定の失敗で隠さず、通常の失敗として返す。
+`local-browser-acceptance.spec.mjs` に追加した 9 件は、既存モデル・controller の戻り値だけでなく本番 DOM と実際の利用者操作を検査する。[追加後の CI 記録](https://github.com/shgnaka/vimdf/actions/runs/37927907805)（`31211cc2868ff2f94de75f9cb974a9d72b5f5c43`）は 19 成功・8 失敗。Node 176 件と build は成功。追加した 8 件の失敗は下表の未実装によるものであり、既存 18 件と file fallback の正の対照 1 件は成功。未実装を `skip` / `todo` / `test.fail` や固定の失敗で隠さず、通常の失敗として返す。
 
 失敗理由は、2 種類の一覧で選択行の可視率が 0、履歴の再選択案内が存在しない、通常 Viewer の導線が 0 件、空フォルダと検索結果なしの文が同一、登録一覧の検索結果なしでも確定案内が残る、非対応でも登録ボタンが見える、非対応画面の Enter で `showDirectoryPicker is not a function` が表示される、の 8 件。フォルダ登録を使えない構成でも、通常ファイル選択による PDF 表示と一覧復帰は成功する。
 
@@ -30,7 +30,7 @@
 
 履歴テストは古い native history state を準備する境界注入だけを行い、controller・popstate・案内文を代替実装しない。長い一覧は native OPFS にデータを作り、スクロール API や CSS を指定せず結果を検査する。表示文は意味を検査し、全文の固定や Figma の配置・色には依存しない。
 
-[対応環境の管理案](local-browser-compatibility.md) と併せて、ブラウザ実行ごとに実版などの `environment.json` を report に添付する。自動試験の環境と実 Chrome / Brave / Vimium-C の対応保証を混同しない。
+[対応方針](local-browser-compatibility.md) に従い、既存の `environment.json` の report 添付は再現の補助として維持する。全環境の対応認定や確認表の管理を目的としない。[フォルダごとの管理仕様](local-folder-management.md#受け入れ条件と既存の証拠) は個別解除の既存検査と追加検査が必要な UI 条件を区別する。この仕様整理ではテスト数や成功・失敗の状態を変更しない。
 
 ```sh
 npm ci
@@ -88,7 +88,7 @@ Node の controller テストは runtime の呼び出しを検証する。実際
 | --- | --- | --- |
 | UI-01 | `local-integration-build.test.mjs`：配布 HTML / JS / CSS、公開範囲、既存 MIME | MR-01：未パッケージ拡張を実際に導入 |
 | UI-02 | build / Session / browser / acceptance：初回・最後の解除・空一覧の案内・API 非対応時の操作停止と file fallback・DB 失敗・通常 Viewer の導線 | MR-01：非対応構成の案内 |
-| UI-03 | Session / browser：busy 中の選択、検索入力・リピート・合成 IME | MR-02：Windows の日本語 IME |
+| UI-03 | Session / browser：busy 中の選択、検索入力・リピート・合成 IME | MR-02：代表環境の日本語 IME |
 | UI-04 | Session / browser / acceptance：クリック、filtered index、解除 snapshot、HTML 名、native button の Enter、長い一覧の選択行追従 | MR-02：focus と画面の見分け |
 | UI-05 | browser：picker / 再許可の activation、取消・失敗後の再試行 | MR-01 / 07：OS dialog と実権限 |
 | UI-06 | controller / Session / browser / acceptance：H、戻り先、filter・選択、履歴 token、破棄文書の再選択案内、再読込 | MR-02：ブラウザの戻る・進む |
@@ -112,12 +112,12 @@ Node の controller テストは runtime の呼び出しを検証する。実際
 
 ## 実機確認の手順と記録
 
-確認ごとに OS、Chrome / Brave / Vimium-C の version、拡張 ID、実行日時、手順、期待値、実際の結果を記録する。現時点は全項目が未確認。実 PDF はテスト用データを使い、成功・失敗を項目ごとに残す。
+代表環境で実行した確認に、使用 OS、ブラウザと Vimium-C の version・配布元、拡張 ID、VimDF commit、実行日時、期待値と実際の結果を残す。全 OS・全 Chromium 系製品・全過去版の確認表を維持しない。現時点は全項目が未確認。実 PDF はテスト用データを使い、成功・失敗を項目ごとに残す。Vimium-C の必要機能の下限と実際の確認版を混同しない。
 
 | ID | 操作 | 合格条件 |
 | --- | --- | --- |
-| MR-01 | `dist/` を未パッケージで導入。明示操作で OS の 2 フォルダを登録し、primary を変更。拡張再読込・ブラウザ再起動。失効後は再許可 | 起動で dialog が出ず、ID / 順序 / primary を復元。失効で登録を削除せず、許可後に開く。Chrome / Brave を別々に確認 |
-| MR-02 | `/` で日本語 IME、`j` / `k` の文字入力、button の Enter、マウス選択、子フォルダから登録一覧、PDF の `H` / ブラウザ戻る・進む | 二重操作・focus 奪取・IME 確定による開封がない。選択と primary が区別でき、一覧位置と検索を復元 |
+| MR-01 | 代表環境で `dist/` を未パッケージで導入。明示操作で OS の 2 フォルダを登録し、primary を変更。拡張再読込・ブラウザ再起動。失効後は再許可 | 起動で dialog が出ず、ID / 順序 / primary を復元。失効で登録を削除せず、許可後に開く。Brave 等の API 差は該当手順を追加確認 |
+| MR-02 | `/` で日本語 IME、`j` / `k` の文字入力、button の Enter、マウス選択、子フォルダから登録一覧、個別解除の確認・取消、PDF の `H` / ブラウザ戻る・進む | 二重操作・focus 奪取・IME 確定による開封がない。選択と primary が区別でき、一覧位置と検索を復元。解除対象と次の既定が分かり、取消は副作用なし |
 | MR-03 | 設定 UI に実 Vimium-C ID を登録。コピー例を Vimium-C に追加。Vomnibar で `vimdf` → Enter。接続無効・未許可・worker 再起動も確認 | bare keyword が 1 回だけ専用タブを開く。失敗は boolean false。omnibox / 他の検索に影響せず、勝手な picker / 登録変更がない |
 | MR-04 | 通常・暗号化・同名別 root・特殊文字 PDF を開き、本文検索・ページ位置・マーク・ハイライト・印刷・保存。従来の URL / MIME 起動も確認 | 同じ identity に復元し、別 root と混線しない。保存名が正しく、出力が開ける。synthetic identity を取得しない |
 | MR-05 | wrong / correct な登録済み候補と手入力を試す。パスワード dialog で Enter・取消・保存。再開封 | 既存の候補と登録が動き、busy 処理が dialog のキーを奪わない。取消後の遅い結果で文書や保存先を変えない |
