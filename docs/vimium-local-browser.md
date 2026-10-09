@@ -4,7 +4,7 @@
 
 Vimium-C の Vomnibar で `vimdf` を確定すると、VimDF 専用タブで登録済みフォルダの PDF を Vim キー操作で選ぶ。複数のフォルダを登録し、そのうち 1 つをプライマリーフォルダとして保存する。起動時はプライマリーのルートを表示し、登録フォルダ一覧で別のフォルダを確定すると、プライマリーを変更して開く。
 
-この PR は仕様・要件と実装前の受け入れテストを整える。機能本体、DOM、IndexedDB アダプター、拡張メッセージの配線は今後の実装対象。単一フォルダ用の旧 `RootAccess` テスト契約を `FolderRegistry` に置き換える。旧契約は未実装なので、既存利用者データの移行を前提にしない。
+この PR は仕様・要件、受け入れテスト、および非 DOM モデルを実装する。`LocalBrowser`、`FolderRegistry`、`LocalBrowserSession`、外部起動コマンドの検証関数を実装済み。DOM、IndexedDB アダプター、拡張メッセージの配線、Viewer への接続は今後の実装対象であり、この段階では拡張画面から利用できない。単一フォルダ用の旧 `RootAccess` テスト契約を `FolderRegistry` に置き換える。旧契約は未実装なので、既存利用者データの移行を前提にしない。
 
 Vomnibar の候補にローカルファイルを追加しない。VimDF は `omnibox.keyword` を登録せず、既存のアドレスバーや他の検索エンジンの設定を変更しない。アーカイブされた別の omnibar プロジェクトには依存しない。対象は File System Access API を利用できるデスクトップブラウザの拡張専用タブ。Chrome と Brave の対応状況・権限保持は実機確認を必要とする。
 
@@ -64,7 +64,7 @@ vimdf: vimium://run/<v-vimdf> VimDF local PDFs
 
 フォルダ内一覧はディレクトリ優先、各種類の中は名前のコードポイント順。ファイルは拡張子 `.pdf` のみを大文字小文字を区別せず表示する。現在のディレクトリだけを列挙し、子孫を事前走査しない。フォルダ移動・プライマリー切り替え後は絞り込みを空にして先頭を選択する。空一覧の選択は `-1`、確定は何もしない。名前は `textContent` で表示する。
 
-絞り込みは大文字小文字を区別しない名前の部分一致。変更時に先頭を選択する。入力中の `j` / `k` / `h` / `l` / `g` / `G` は文字であり、移動コマンドを発火しない。文字列は DOM の `input` イベントから渡し、日本語 IME の合成中のキーは処理しない。Ctrl・Alt・Meta を伴うショートカットも処理しない。`gg` は独立した 2 回のキー押下で成立し、キーリピートや間に入った別コマンドで誤成立させない。`Enter` / `l` / `a` のリピートで開く・許可・追加を繰り返さない。
+絞り込みは大文字小文字を区別しない名前の部分一致。変更時に先頭を選択する。入力中の `j` / `k` / `h` / `l` / `g` / `G` は文字であり、移動コマンドを発火しない。文字列は DOM の `input` イベントから渡し、日本語 IME の合成中のキーは処理しない。Ctrl・Alt・Meta を伴うショートカットも処理しない。`gg` は独立した 2 回のキー押下で成立し、キーリピートや間に入った別コマンドで誤成立させない。`Enter` / `l` / `a` / `Esc` のリピートで開く・許可・追加・取消を繰り返さない。
 
 追加・切り替え・列挙中は処理中を表示し、次の移動・確定を消費して重複処理を起こさない。エラー時も処理中状態を解除して再試行できる。登録一覧の取消はプライマリーを変更しない。起動時の権限確認から一覧へ戻った場合は、取消で戻れるフォルダ内画面がないため一覧に留まる。
 
@@ -86,7 +86,7 @@ API の根拠： [File System Access 仕様](https://wicg.github.io/file-system-
 
 PDF は `fileHandle.getFile()` の `File` を既存 PDF.js Viewer に渡す。blob URL は輸送に使えても、永続識別子にしない。登録ルート UUID とルートからの相対パスから安定した専用 identity を生成し、ページ位置・マーク・パスワードの既存保存処理と接続する。
 
-同じルートの同じ相対パスは、プライマリーを往復しても同じ identity。異なるルートや異なる子フォルダの同名 PDF は別文書。改名・移動後は別文書として扱う。登録を解除して登録し直した場合も新 UUID のため別文書になる。通常のプライマリー変更では UUID を再生成しない。ファイル読取に失敗した場合は Viewer を開かない。
+同じルートの同じ相対パスは、プライマリーを往復しても同じ identity。異なるルートや異なる子フォルダの同名 PDF は別文書。改名・移動後は別文書として扱う。登録を解除して登録し直した場合も新 UUID のため別文書になる。通常のプライマリー変更では UUID を再生成しない。ファイル読取に失敗した場合は Viewer を開かない。モデルの identity は `https://local-pdf.vimdf.invalid/<登録 ID>/<相対パス>` とし、各パス要素を個別に URL エンコードする。既存のパスワード保存用 `documentKey()` が受け付ける形式だが、ネットワークから PDF を取得する URL ではない。
 
 ## 非 DOM モデルの実装契約
 
@@ -99,7 +99,7 @@ PDF は `fileHandle.getFile()` の `File` を既存 PDF.js Viewer に渡す。bl
 | `FolderRegistry({load,save,pick,newId})` | `roots`、`primaryId` を公開し、下記の非同期操作を提供する |
 | `LocalBrowserSession({registry,openPdf})` | `start()`、`key(event)`、`setFilter(text)`。公開状態は `view`（`empty` / `browse` / `roots` / `permission`）、`activeRootId`、`pendingRootId`、`entries`、`selectedIndex`、`filter`、`inputMode`（`normal` / `filter`）、`busy` |
 
-`FolderRegistry` の注入関数は `load():Promise<State|null>`、`save(State):Promise<void>`、`pick({mode:"read"}):Promise<DirectoryHandle>`、`newId():string`。`save` は 1 トランザクションで登録リストとプライマリーを保存する。`restore()` 前の初期状態は空。保存の必要な操作は、成功まで既存の状態を維持する。
+`FolderRegistry` の注入関数は `load():Promise<State|null>`、`save(State):Promise<void>`、`pick({mode:"read"}):Promise<DirectoryHandle>`、`newId():string`。`save` は 1 トランザクションで登録リストとプライマリーを保存する。`restore()` 前の初期状態は空。保存の必要な操作は、成功まで既存の状態を維持する。復元時に保存形式・ハンドル・ID の重複・プライマリー参照を検証し、読み込み失敗や不正データを空の設定で上書きしない。失敗後の変更は、再度の復元成功まで拒否する。同一 Registry 内の操作の重複も拒否し、許可要求を非同期キューへ遅延させない。複数タブ間の更新制御は実ストレージアダプターの責務。
 
 | Registry 操作 | 結果 |
 | --- | --- |
@@ -111,7 +111,7 @@ PDF は `fileHandle.getFile()` の `File` を既存 PDF.js Viewer に渡す。bl
 
 未知の ID の `activate()` / `authorize()` は例外にする。登録一覧の `entries` は `{id,name,isPrimary}` を公開する。画面表示名は `handle.name` を使用する。同名の登録の識別は ID で行い、実装時は登録時刻や短い ID などで区別できる表示を用意する。
 
-Session の `key(event)` は `{key,repeat?,ctrlKey?,altKey?,metaKey?,isComposing?}` を受け取る。コマンドを消費した場合は `true`、入力文字・IME・修飾キー・未対応キーは `false` を返す。DOM 側は `true` の場合に `preventDefault()` する。`g` の連続押下の解釈、入力モード、権限画面、処理中の重複防止を Session が担う。`setFilter()` は DOM の入力イベントからテキストを更新する操作で、呼ぶだけでは入力モードへ移らない。
+Session の `key(event)` は `{key,repeat?,ctrlKey?,altKey?,metaKey?,isComposing?}` を受け取る。同期コマンドは `true`、非同期コマンドは処理完了時に `true` となる Promise、入力文字・IME・修飾キー・未対応キーは同期的な `false` を返す。DOM 側は呼び出しの直後に戻り値が `false` でなければ `preventDefault()` し、Promise を待つ前に既定動作を抑える。非同期のエラーは画面で表示する。`g` の連続押下の解釈、入力モード、権限画面、処理中の重複防止を Session が担う。`setFilter()` は DOM の入力イベントからテキストを更新する操作で、呼ぶだけでは入力モードへ移らない。`refresh()` は保存プライマリーを変えずに現在の一覧を再取得し、列挙失敗からの再試行に使う。
 
 ## 受け入れテストと実装後の確認
 
@@ -122,9 +122,10 @@ Session の `key(event)` は `{key,repeat?,ctrlKey?,altKey?,metaKey?,isComposing
 | `tests/local-browser.test.mjs` | 外部起動の制限、一覧・名前検索、ルート境界、PDF 読取と identity、列挙失敗、非再帰走査 |
 | `tests/local-browser-registry.test.mjs` | 複数登録、プライマリー、不変 ID、重複、保存・復元、取消、権限拒否と明示再許可、I/O 失敗時の整合性、登録解除 |
 | `tests/local-browser-session.test.mjs` | 起動画面、`h` で登録一覧、確定と取消、再起動後の既定値、キーイベント・入力・IME、権限画面、追加、切り替え後の identity、非同期中の重複操作 |
+| `tests/local-browser-edge.test.mjs` | 入力中のキーリピート、picker・再許可の同期呼び出し、列挙失敗と再試行、遅い列挙の競合、不正な保存値、重複操作、Unicode 順序、既存パスワード保存との identity 互換性 |
 | `tests/helpers/local-browser-fixtures.mjs` | handle・保存・picker・PDF 表示の注入用フェイク。権限と I/O 呼出しを記録し、実ブラウザの代わりにモデル契約を検証する |
 
-仕様段階ではモデル未実装を全ケースで明示的な失敗として扱う。`skip` や仮のモデルで成功扱いにしない。機能の実装完了条件はモデルテストの成功に加え、以下の統合・実機確認を満たすこと。
+当初の 67 件の受け入れテストに、実装時の境界条件 11 件を追加した 78 件で実モデルを検証する。`skip` や仮のモデルで成功扱いにしない。GitHub Actions でも `test:local-browser` を実行する。機能全体の実装完了条件はモデルテストの成功に加え、以下の統合・実機確認を満たすこと。
 
 - Vimium-C の設定例から専用タブへ起動し、外部メッセージによる勝手な登録・切り替えがない。
 - 実 IndexedDB で複数 handle を保存し、拡張・ブラウザ再起動後も登録 ID とプライマリーを復元する。複数タブからの更新を直列化して、古い状態で登録を消さない。

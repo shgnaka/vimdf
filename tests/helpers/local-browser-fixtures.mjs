@@ -1,15 +1,6 @@
-import assert from 'node:assert/strict';
+import * as implementation from '../../src/local-browser/model.ts';
 
-// The production module is intentionally absent on this specification branch.
-let implementation;
-let loadError;
-try {
-  implementation = await import('../../src/local-browser/model.ts');
-} catch (error) {
-  loadError = error;
-}
 export function contract() {
-  assert.ok(implementation, `Local browser implementation required: ${loadError?.message}`);
   return implementation;
 }
 
