@@ -119,6 +119,8 @@ Session の `key(event)` は `{key,repeat?,ctrlKey?,altKey?,metaKey?,isComposing
 
 `npm run test:local-browser` は `tests/local-browser*.test.mjs` をすべて実行する。
 
+画面・IndexedDB・共有 Viewer・外部起動の追加テストは、別の `npm run test:local-integration` と `npm run test:local-browser:browser` で実行する。[テスト契約と対応表](local-browser-testing.md) を参照。接続部分は未実装のため追加テストはまだ緑ではなく、既存の 78 件に成功分として加算しない。
+
 | テストファイル | 確認する要件 |
 | --- | --- |
 | `tests/local-browser.test.mjs` | 外部起動の制限、一覧・名前検索、ルート境界、PDF 読取と identity、列挙失敗、非再帰走査 |

@@ -2,7 +2,7 @@
 
 ## 適用範囲と実装状態
 
-[基本仕様](vimium-local-browser.md)の複数登録・プライマリー・キー操作を、実際の拡張画面へ接続するための要件。`src/local-browser/` のモデルと 78 件のテストは実装済み。本書で定義する DOM、実 IndexedDB、共有 Viewer runtime、外部起動リスナー、設定 UI、統合テストは未実装。この更新では仕様だけを追加する。
+[基本仕様](vimium-local-browser.md) の複数登録・プライマリー・キー操作を、実際の拡張画面へ接続するための要件。`src/local-browser/` のモデルと 78 件のテストは実装済み。本書で定義する DOM、実 IndexedDB、共有 Viewer runtime、外部起動リスナー、設定 UI は未実装。[統合テストの契約・対応表](local-browser-testing.md) に Node の 50 件、Chromium の 16 件、実機確認の手順を追加した。未実装を検出するテストは現在失敗しており、機能の完了を意味しない。
 
 | 領域 | 採用する構成 | 現在のコードとの接点 |
 | --- | --- | --- |
@@ -75,8 +75,8 @@ flowchart TD
 
 ### トランザクションと複数タブ
 
-1. `load()` は readonly transaction で envelope を読み、revision をアダプター内部に保持して model の State だけを返す。schema・revision の不正は例外にする。モデルによる ID・handle・プライマリー参照の検証も維持する。
-2. `save(State)` は 1 readwrite transaction 内で現在の revision を再読取し、最後に読んだ値と比較する。一致した場合だけ `revision + 1` と State をまとめて保存する。request の成功時ではなく transaction の `complete` で resolve する。
+1. `load()` は readonly transaction で envelope を読み、revision をアダプター内部に保持して model の State だけを返す。revision は非負の safe integer とし、schema・revision の不正は例外にする。モデルによる ID・handle・プライマリー参照の検証も維持する。
+2. `save(State)` は 1 readwrite transaction 内で現在の revision を再読取し、最後に読んだ値と比較する。一致した場合だけ `revision + 1` と State をまとめて保存する。safe integer の上限なら保存を拒否し、通知しない。request の成功時ではなく transaction の `complete` で resolve する。
 3. 不一致は `storage-conflict` として transaction を abort し、旧状態を上書きしない。`FolderRegistry` がメモリーを更新する前に reject する。単に保存処理を直列化して古い State を順番に書く方式では要件を満たさない。
 4. transaction 内で picker・許可要求・`isSameEntry()`・ファイル読取・ネットワーク処理を await しない。必要な照合や許可確認は transaction を作る前に済ませ、IDB の request callback 内で比較と put を続ける。
 5. commit 後に BroadcastChannel `vimdf.local-browser.registry.v1` で revision だけを通知する。通知のない場合も、画面が再び前面になった際に revision を確認する。通知を DB の正本にしない。
@@ -166,7 +166,7 @@ Vimium-C がない場合でも、VimDF 設定の起動ボタンと新しい tool
 
 ## 受け入れ条件と検証計画
 
-以下は今後追加する統合テストの要件。実装済みの 78 件とは別であり、この文書を追加しただけでテスト充足と数えない。
+以下は統合の受け入れ条件。各条件に対応する自動テストと実機確認を [テスト対応表](local-browser-testing.md#受け入れ条件との対応) に示す。実装済みモデルの 78 件とは別であり、テストの追加・収集だけで検証成功と数えない。
 
 | ID | 確認内容 | 合格条件 |
 | --- | --- | --- |

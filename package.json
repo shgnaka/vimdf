@@ -12,11 +12,15 @@
     "preview": "vite preview",
     "test:password": "node --test tests/password*.test.mjs",
     "test:scroll": "node --experimental-transform-types --test tests/continuous-scroll.test.mjs",
-    "test:local-browser": "node --experimental-transform-types --test tests/local-browser*.test.mjs"
+    "test:local-browser": "node --experimental-transform-types --test tests/local-browser*.test.mjs",
+    "test:local-integration": "npm run build && node --experimental-transform-types --test --test-reporter=tap tests/local-integration*.test.mjs",
+    "test:local-browser:browser": "npm run build && playwright test --config=playwright.local.config.mjs"
   },
   "devDependencies": {
     "@crxjs/vite-plugin": "^2.4.0",
     "@types/chrome": "^0.0.270",
+    "fake-indexeddb": "6.2.5",
+    "playwright": "1.62.1",
     "typescript": "^5.5.4",
     "vite": "^5.4.8",
     "vite-plugin-static-copy": "^3.4.0"
