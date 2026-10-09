@@ -9,14 +9,16 @@
 | 既存モデル | 78 | 成功。フェイクの handle / I/O でモデル契約を検証 |
 | 既存パスワード / スクロール | 34 / 14 | 成功。既存機能の回帰確認 |
 | Node の統合契約 | 50 | 成功。保存の commit / abort、競合、起動、PDF controller と配布 build を検証 |
-| Chromium の拡張・DOM・native IDB | 27 | 既存 18 件は成功実績あり。監査で不足が判明した 5 要件に 9 件を追加。追加後の結果は後述 |
+| Chromium の拡張・DOM・native IDB | 27 | 19 成功・8 失敗。既存 18 件と通常ファイル選択の対照が成功。追加した検査で 5 要件の実装漏れを検出 |
 | 実 Vimium-C / Chrome / Brave | 8 手順 | 未実施。後述の MR-01〜08 を完了条件にする |
 
 確認日：2026-10-09。追加前は Node 合計 176 件、Chromium 18 件が成功し、[PR の CI 実行](https://github.com/shgnaka/vimdf/actions/runs/37922809087) でも統合契約・ブラウザの両 job が成功。ただし仕様の一部を検査できていなかったため、全要件の実装完了とは扱わない。実 Vimium C / Brave / OS picker の確認は未実施。
 
 ### 監査で見つかった未充足の画面要件
 
-`local-browser-acceptance.spec.mjs` に追加した 9 件は、既存モデル・controller の戻り値だけでなく本番 DOM と実際の利用者操作を検査する。追加後の実行結果は確認待ち。未実装を `skip` / `todo` / `test.fail` や固定の失敗で隠さず、通常の失敗として返す。
+`local-browser-acceptance.spec.mjs` に追加した 9 件は、既存モデル・controller の戻り値だけでなく本番 DOM と実際の利用者操作を検査する。[追加後の CI 記録](https://github.com/shgnaka/vimdf/actions/runs/37927302944)（`5522573e93b01e76b0fad4fcf41aee6f814efead`）は 19 成功・8 失敗。Node 176 件と build は成功。追加した 8 件の失敗は下表の未実装によるものであり、既存 18 件と file fallback の正の対照 1 件は成功。未実装を `skip` / `todo` / `test.fail` や固定の失敗で隠さず、通常の失敗として返す。
+
+失敗理由は、2 種類の一覧で選択行の可視率が 0、履歴の再選択案内が存在しない、通常 Viewer の導線が 0 件、空フォルダと検索結果なしの文が同一、登録一覧の検索結果なしでも確定案内が残る、非対応でも登録ボタンが見える、非対応画面の Enter で `showDirectoryPicker is not a function` が表示される、の 8 件。フォルダ登録を使えない構成でも、通常ファイル選択による PDF 表示と一覧復帰は成功する。
 
 | 仕様の不足していた検査 | 追加テスト |
 | --- | --- |

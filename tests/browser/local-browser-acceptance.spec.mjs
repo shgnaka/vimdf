@@ -8,7 +8,11 @@ for (const view of ['files', 'registered folders']) {
     await extension.seed({ pdfCount: 48, extraRoots: 30 });
     const page = await extension.openBrowser(); await page.setViewportSize({ width: 960, height: 640 });
     await expect(page.getByTestId('local-browser')).toHaveAttribute('data-busy', 'false');
-    if (view === 'registered folders') await page.keyboard.press('h');
+    if (view === 'registered folders') {
+      await page.keyboard.press('h');
+      await expect(page.getByTestId('local-browser')).toHaveAttribute('data-view', 'roots');
+      await expect(page.getByTestId('local-browser')).toHaveAttribute('data-busy', 'false');
+    }
     const before = await extension.registry();
     const rows = page.getByRole('option'); const count = await rows.count();
     expect(count).toBeGreaterThan(30);
@@ -39,12 +43,14 @@ test('[UI-06] discarded PDF history visibly asks for re-selection without fetchi
   page.on('request', request => { if (request.url().startsWith('https://local-pdf.vimdf.invalid/')) fetched.push(request.url()); });
   await openLesson(page); const discarded = await page.evaluate(() => history.state);
   await page.keyboard.press('H');
+  await expect(page.getByTestId('local-browser')).toHaveAttribute('data-mode', 'files');
   await expect(page.getByTestId('local-browser')).toHaveAttribute('data-busy', 'false');
   await page.locator('[data-action="roots"]').click(); await page.getByRole('option', { name: /Books/ }).dblclick();
   await filter(page, 'lesson'); await page.keyboard.press('Enter');
   await expect(page.getByTestId('local-browser')).toHaveAttribute('data-mode', 'pdf');
   expect((await page.evaluate(() => history.state)).token).not.toBe(discarded.token);
   await page.keyboard.press('H');
+  await expect(page.getByTestId('local-browser')).toHaveAttribute('data-mode', 'files');
   await expect(page.getByTestId('local-browser')).toHaveAttribute('data-busy', 'false');
   const before = await extension.registry(); const url = page.url();
   // Supply the stale history boundary, without stubbing the controller,
@@ -94,7 +100,10 @@ test('[UI-02] empty-folder and no-search-results messages differ and clearing th
 test('[UI-02] no matching registered-folder names shows no-results instead of asking to confirm a folder', async ({ extension }) => {
   await extension.seed(); const page = await extension.openBrowser();
   await expect(page.getByTestId('local-browser')).toHaveAttribute('data-busy', 'false'); await page.keyboard.press('h');
+  await expect(page.getByTestId('local-browser')).toHaveAttribute('data-view', 'roots');
+  await expect(page.getByTestId('local-browser')).toHaveAttribute('data-busy', 'false');
   const message = page.locator('#browser-message'); const instruction = (await message.innerText()).trim();
+  expect(instruction.length).toBeGreaterThan(0);
   await filter(page, 'missing-registered-folder'); await expect(page.getByRole('option')).toHaveCount(0);
   await expect(message).toBeVisible(); await expect(message).not.toHaveText(instruction);
   await expect(message).toContainText(/no (?:matching|results|names match)|nothing matches/i);
