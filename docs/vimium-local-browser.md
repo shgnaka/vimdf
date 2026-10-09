@@ -6,15 +6,17 @@ Vimium-C の Vomnibar で `vimdf` を確定すると、VimDF 専用タブで登�
 
 この PR は仕様・要件、受け入れテスト、および非 DOM モデルを実装する。`LocalBrowser`、`FolderRegistry`、`LocalBrowserSession`、外部起動コマンドの検証関数を実装済み。DOM、IndexedDB アダプター、拡張メッセージの配線、Viewer への接続は今後の実装対象であり、この段階では拡張画面から利用できない。単一フォルダ用の旧 `RootAccess` テスト契約を `FolderRegistry` に置き換える。旧契約は未実装なので、既存利用者データの移行を前提にしない。
 
+未実装の接続部分は [統合仕様](local-browser-integration.md) に定義する。同じ専用タブ内で一覧と PDF を切り替える構成、実 IDB の revision 比較、Viewer の文書交換、外部起動設定と実機の受け入れ条件を扱う。
+
 Vomnibar の候補にローカルファイルを追加しない。VimDF は `omnibox.keyword` を登録せず、既存のアドレスバーや他の検索エンジンの設定を変更しない。アーカイブされた別の omnibar プロジェクトには依存しない。対象は File System Access API を利用できるデスクトップブラウザの拡張専用タブ。Chrome と Brave の対応状況・権限保持は実機確認を必要とする。
 
 この画面の「検索」は、現在のフォルダのフォルダ名・PDF 名、または登録フォルダ名の絞り込み。全登録フォルダの再帰検索や PDF 本文の横断検索は含めない。PDF を開いた後の本文検索は既存 Viewer の機能を利用する。
 
 ## 起動契約
 
-VimDF background は `runtime.onMessageExternal` で、設定で明示許可した Vimium-C 拡張 ID からの `{type:"vimdf.openLocalBrowser",version:1}` だけを受け付ける。`sender.id` を検証し、メッセージ内の `from` 文字列を認証に使わない。許可 ID の初期値は空。別ストア版・開発版の ID も利用者が登録できる。通常の内部 `onMessage` 処理とは分離する。
+VimDF background は `runtime.onMessageExternal` で、接続が有効かつ設定で明示許可した Vimium-C 拡張 ID からの `{type:"vimdf.openLocalBrowser",version:1}` だけを受け付ける。`sender.id` を検証し、メッセージ内の `from` 文字列を認証に使わない。初期値は接続無効・許可 ID 空。別ストア版・開発版の ID も利用者が登録できる。通常の内部 `onMessage` 処理とは分離する。
 
-メッセージのキーは `type` と `version` に限定する。URL、絶対パス、コード、`rootId`、`primaryId` を受信しない。不正型・追加フィールド・未対応バージョン・未許可送信元・incognito は副作用なしで拒否する。許可メッセージは専用タブを開くだけで、フォルダ選択・権限要求・列挙・プライマリー変更を実行しない。
+メッセージのキーは `type` と `version` に限定する。URL、絶対パス、コード、`rootId`、`primaryId` を受信しない。不正型・追加フィールド・未対応バージョン・未許可送信元・識別できる incognito 起点は副作用なしで拒否し、シークレットのウィンドウを起動対象にしない。実 sender の正規化と元タブ不明時の対象 window は統合仕様に従う。許可メッセージは専用タブを開くだけで、フォルダ選択・権限要求・列挙・プライマリー変更を実行しない。
 
 Vimium-C 設定例（`ADDONID` を VimDF の拡張 ID に置換）：
 
@@ -22,14 +24,14 @@ Vimium-C 設定例（`ADDONID` を VimDF の拡張 ID に置換）：
 # Custom key mappings
 map <v-vimdf> sendToExtension id="ADDONID" raw data={"type":"vimdf.openLocalBrowser","version":1}
 # Custom search engines
-vimdf: vimium://run/<v-vimdf> VimDF local PDFs
+vimdf: vimium://run/<v-vimdf> blank=vimium://run/<v-vimdf> VimDF local PDFs
 ```
 
 設定は利用者が追加する。bare keyword の確定と ID の差し替えは対象 Vimium-C バージョンで検証し、動作しない場合は設定例を修正する。
 
 ## 登録とプライマリー
 
-登録フォルダは `{id,handle}` の組で、登録順を保持する。`id` は登録時に生成する UUID、`handle` は読取用 `FileSystemDirectoryHandle`。表示名や絶対パスを識別子にしない。保存形式は IndexedDB 内の `{version:1,roots:[{id,handle}],primaryId}`。空の場合は `roots:[]` と `primaryId:null`、登録がある場合は `primaryId` が必ず登録済みの 1 件を指す。
+登録フォルダは `{id,handle}` の組で、登録順を保持する。`id` は登録時に生成する UUID、`handle` は読取用 `FileSystemDirectoryHandle`。表示名や絶対パスを識別子にしない。モデルの State は `{version:1,roots:[{id,handle}],primaryId}`。実 IndexedDB アダプターは統合仕様に従い `{revision,state:State}` の envelope で保存する。空の場合は `roots:[]` と `primaryId:null`、登録がある場合は `primaryId` が必ず登録済みの 1 件を指す。
 
 - 初回登録を自動でプライマリーにする。追加登録では現在のプライマリーを維持する。
 - 起動時にプライマリーのルートを開く。直前に開いていた子フォルダや、別の開始位置を保存する設定は今回含めない。
@@ -37,7 +39,7 @@ vimdf: vimium://run/<v-vimdf> VimDF local PDFs
 - 同じ実フォルダは `isSameEntry()` で重複判定し、既存 ID を再利用する。重複登録で ID・順序・プライマリーを変更しない。同名の別フォルダはそれぞれ登録できる。
 - 標準の `showDirectoryPicker()` は 1 回につき 1 フォルダを選ぶ。複数登録は「フォルダを追加」を繰り返す操作で実現する。
 - 取消・権限拒否・比較失敗・保存失敗で、登録やプライマリーを途中まで変更しない。保存完了後にメモリー上の状態を公開する。
-- 設定画面から登録を解除できる。非プライマリーの解除では現在値を維持し、プライマリーの解除では登録順で最初の残存フォルダを選ぶ。最後の解除で空にする。残存フォルダの権限が失効していても、勝手に別のフォルダへ置き換えない。解除は保存ハンドルを除く操作で、実ファイルを削除しない。
+- 専用画面の登録一覧から登録を解除できる。設定画面からもこの一覧へ移動できる。非プライマリーの解除では現在値を維持し、プライマリーの解除では登録順で最初の残存フォルダを選ぶ。最後の解除で空にする。残存フォルダの権限が失効していても、勝手に別のフォルダへ置き換えない。解除は保存ハンドルを除く操作で、実ファイルを削除しない。
 
 登録ルートを越えて OS 上の親を発見・列挙しない。`h` で戻れる最上部は、VimDF が作る仮想的な登録フォルダ一覧。追加・切り替えにより、離れた場所にある複数フォルダを扱える。登録ルートの子孫も別途登録できるが、それぞれの登録 ID は独立する。
 
@@ -84,7 +86,7 @@ API の根拠： [File System Access 仕様](https://wicg.github.io/file-system-
 
 ## PDF の識別と表示
 
-PDF は `fileHandle.getFile()` の `File` を既存 PDF.js Viewer に渡す。blob URL は輸送に使えても、永続識別子にしない。登録ルート UUID とルートからの相対パスから安定した専用 identity を生成し、ページ位置・マーク・パスワードの既存保存処理と接続する。
+PDF は `fileHandle.getFile()` の `File` からバイト列を読み、同じ専用タブ内の共有 PDF.js Viewer へ直接渡す。登録ルート UUID とルートからの相対パスから安定した専用 identity を生成し、ページ位置・マーク・ハイライト・パスワードの既存保存処理と接続する。文書交換と一覧への復帰は統合仕様に従う。
 
 同じルートの同じ相対パスは、プライマリーを往復しても同じ identity。異なるルートや異なる子フォルダの同名 PDF は別文書。改名・移動後は別文書として扱う。登録を解除して登録し直した場合も新 UUID のため別文書になる。通常のプライマリー変更では UUID を再生成しない。ファイル読取に失敗した場合は Viewer を開かない。モデルの identity は `https://local-pdf.vimdf.invalid/<登録 ID>/<相対パス>` とし、各パス要素を個別に URL エンコードする。既存のパスワード保存用 `documentKey()` が受け付ける形式だが、ネットワークから PDF を取得する URL ではない。
 
@@ -128,7 +130,7 @@ Session の `key(event)` は `{key,repeat?,ctrlKey?,altKey?,metaKey?,isComposing
 当初の 67 件の受け入れテストに、実装時の境界条件 11 件を追加した 78 件で実モデルを検証する。`skip` や仮のモデルで成功扱いにしない。GitHub Actions でも `test:local-browser` を実行する。機能全体の実装完了条件はモデルテストの成功に加え、以下の統合・実機確認を満たすこと。
 
 - Vimium-C の設定例から専用タブへ起動し、外部メッセージによる勝手な登録・切り替えがない。
-- 実 IndexedDB で複数 handle を保存し、拡張・ブラウザ再起動後も登録 ID とプライマリーを復元する。複数タブからの更新を直列化して、古い状態で登録を消さない。
+- 実 IndexedDB で複数 handle を保存し、拡張・ブラウザ再起動後も登録 ID とプライマリーを復元する。同一 transaction 内の revision 比較で複数タブの保存競合を検出し、古い状態で登録を消さない。通知・再読み込みまで統合仕様に従う。
 - 標準 picker と `requestPermission()` を実際のユーザー操作内で呼ぶ。途中の非同期処理でユーザー操作の効力を失わせない。拒否・取消・失効・読取中の削除・保存失敗を画面で回復できる。
 - DOM の入力・keydown・IME を接続し、二重処理を防ぐ。権限画面・登録一覧でフォーカスを適切に移し、選択とプライマリーを画面と支援技術に伝える。
 - 遅い列挙結果が切り替え後の一覧を上書きしない。HTML を含むファイル名を安全に表示する。
