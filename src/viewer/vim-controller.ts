@@ -452,7 +452,7 @@ export class VimController {
         if (anchor) {
           this.marks.set(key, anchor);
           this.viewer.setStatusCenter(`mark ${key} set`);
-          setTimeout(() => this.viewer.clearStatusCenter(), 1200);
+          this.viewer.clearStatusLater(1200);
         }
       }
       return;
@@ -468,7 +468,7 @@ export class VimController {
           this.viewer.restoreMarkAnchor(m);
         } else {
           this.viewer.setStatusCenter(`mark ${key} not set`);
-          setTimeout(() => this.viewer.clearStatusCenter(), 1200);
+          this.viewer.clearStatusLater(1200);
         }
       }
       return;
@@ -748,7 +748,7 @@ export class VimController {
     });
     if (!ok) {
       this.viewer.setStatusCenter("no links in view");
-      setTimeout(() => this.viewer.clearStatusCenter(), 1200);
+      this.viewer.clearStatusLater(1200);
       return;
     }
     this.mode = "hint";
@@ -778,7 +778,7 @@ export class VimController {
     const prev = this.jumps.popBack(this.snapshot());
     if (!prev) {
       this.viewer.setStatusCenter("no earlier jump");
-      setTimeout(() => this.viewer.clearStatusCenter(), 1200);
+      this.viewer.clearStatusLater(1200);
       return;
     }
     this.restore(prev);
@@ -788,7 +788,7 @@ export class VimController {
     const next = this.jumps.popForward(this.snapshot());
     if (!next) {
       this.viewer.setStatusCenter("no later jump");
-      setTimeout(() => this.viewer.clearStatusCenter(), 1200);
+      this.viewer.clearStatusLater(1200);
       return;
     }
     this.restore(next);

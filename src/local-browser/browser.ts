@@ -44,12 +44,16 @@ function render() {
   action("retry").disabled = checking || !!session?.busy;
   action("add").disabled = !ready || !folderApi || stale || !!session?.busy || checking;
   action("roots").disabled = !ready || !!session?.busy || checking;
+  action("back").disabled = mode !== "pdf";
   action("authorize").hidden = session?.view !== "permission";
   action("authorize").disabled = !ready || stale || !!session?.busy;
-  document.getElementById("browser-fallback")!.hidden = folderApi;
+  document.getElementById("browser-fallback")!.hidden = folderApi && !(pdf && !ready && !error.hidden);
+  action("pick-file").disabled = !pdf || pdf.mode === "loading-pdf";
   if (!session) return;
   document.querySelector<HTMLElement>('[data-testid="browser-location"]')!.textContent = session.location;
   filter.readOnly = session.inputMode !== "filter";
+  filter.disabled = !ready || checking || session.busy || stale;
+  list.setAttribute("aria-busy", String(checking || session.busy));
   if (!composing && filter.value !== session.filter) filter.value = session.filter;
   document.getElementById("filter-mode")!.textContent = session.inputMode === "filter" ? "FILTER" : "NAMES";
   message.textContent = session.view === "empty" ? "Add a folder to browse its PDFs. You can register several folders."
@@ -57,7 +61,7 @@ function render() {
     : session.view === "roots" ? "Select a folder and press Enter to make it the default starting folder."
     : session.entries.length === 0 ? "No matching folders or PDFs." : "";
   const rows = session.entries.map((entry, index) => {
-    const row = document.createElement("div"); row.className = "browser-row";
+    const row = document.createElement("div"); row.className = "browser-row"; row.id = `browser-row-${index}`;
     row.setAttribute("role", "option"); row.setAttribute("aria-label", entry.name);
     row.setAttribute("aria-selected", String(index === session!.selectedIndex));
     const isRoot = "id" in entry;
@@ -87,12 +91,15 @@ function render() {
     row.onclick = () => {
       session!.select(index);
       list.querySelectorAll('[role="option"]').forEach((element, selected) => element.setAttribute("aria-selected", String(selected === session!.selectedIndex)));
+      list.setAttribute("aria-activedescendant", `browser-row-${session!.selectedIndex}`);
       list.focus();
     };
     row.ondblclick = () => { session!.select(index); dispatch({ key: "Enter" }); };
     return row;
   });
   list.replaceChildren(...rows);
+  if (session.selectedIndex >= 0) list.setAttribute("aria-activedescendant", `browser-row-${session.selectedIndex}`);
+  else list.removeAttribute("aria-activedescendant");
   document.getElementById("browser-count")!.textContent = `${rows.length} items`;
   if (session.inputMode === "filter" && document.activeElement !== filter) filter.focus();
   else if (session.inputMode !== "filter" && document.activeElement === filter) list.focus();
@@ -192,4 +199,10 @@ async function bootstrap() {
   await session.start(); ready = true; root.hidden = false; render(); list.focus();
 }
 render();
-void bootstrap().catch(reason => { ready = false; root.hidden = false; showError(reason); render(); });
+void bootstrap().catch(reason => {
+  // A restored registry whose permission query/listing failed still offers
+  // explicit authorization and another registered root. Failed DB/state
+  // initialization remains locked until a successful reload.
+  ready = !!session && (session.view === "permission" || session.view === "browse");
+  root.hidden = false; showError(reason); render();
+});

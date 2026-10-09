@@ -17,10 +17,10 @@
       <button data-action="retry" type="button" hidden>Retry</button>
       <p id="browser-message" aria-live="polite">Loading saved folders…</p>
       <button data-action="authorize" type="button" hidden>Allow read access</button>
-      <label class="browser-search"><span aria-hidden="true">/</span><input data-testid="browser-filter" aria-label="Filter file or folder names" placeholder="Press / to filter names" autocomplete="off" spellcheck="false" readonly /><span id="filter-mode">NAMES</span></label>
+      <label class="browser-search"><span aria-hidden="true">/</span><input data-testid="browser-filter" aria-label="Filter file or folder names" aria-controls="browser-list" placeholder="Press / to filter names" autocomplete="off" spellcheck="false" readonly /><span id="filter-mode">NAMES</span></label>
       <div class="list-labels" aria-hidden="true"><span>Name</span><span>Type</span></div>
       <div id="browser-list" role="listbox" aria-label="Files and folders" tabindex="0"></div>
-      <div id="browser-fallback" hidden><p>Folder selection is unavailable in this browser. Open a PDF file instead.</p><button data-action="pick-file" type="button">Open PDF file</button><input id="fallback-file" type="file" accept="application/pdf,.pdf" hidden /></div>
+      <div id="browser-fallback" hidden><p>Folder browsing is unavailable in this browser. Open a PDF file instead.</p><button data-action="pick-file" type="button">Open PDF file</button><input id="fallback-file" type="file" accept="application/pdf,.pdf" hidden /></div>
     </div>
     <dialog id="remove-root-dialog" aria-labelledby="remove-root-title">
       <h2 id="remove-root-title">Unregister folder?</h2><p id="remove-root-description"></p>

@@ -95,6 +95,8 @@ export class Viewer {
   private generation = 0;
   private saves: Promise<void> = Promise.resolve();
   private disposed = false;
+  private statusRevision = 0;
+  private statusTimers = new Set<number>();
 
   snapshot(): { identity: string; page: number; scroll: number } | null {
     return this.pdfDocument ? { identity: this.pdfUrl, page: this.currentPage, scroll: this.container.scrollTop } : null;
@@ -127,6 +129,8 @@ export class Viewer {
     this.disposed = true;
     this.passwordLoad?.abort();
     this.generation++;
+    for (const timer of this.statusTimers) clearTimeout(timer);
+    this.statusTimers.clear();
     this.suspend();
     if (this.saveDebounceTimer !== null) clearTimeout(this.saveDebounceTimer);
     this.pdfViewer.setDocument(null as unknown as PDFDocumentProxy);
@@ -823,11 +827,11 @@ export class Viewer {
               await downloadPdf(doc, { filename });
               await saveLastDownloadSubdir(subdir);
               this.setStatusCenter(`saved ${filename}`);
-              setTimeout(() => this.clearStatusCenter(), 1500);
+              this.clearStatusLater(1500);
             } catch (err) {
               console.error("download failed:", err);
               this.setStatusCenter("download failed");
-              setTimeout(() => this.clearStatusCenter(), 1800);
+              this.clearStatusLater(1800);
             }
           })();
         },
@@ -837,13 +841,13 @@ export class Viewer {
             try {
               await downloadPdf(doc, { filename, saveAs: true });
               this.setStatusCenter("saved");
-              setTimeout(() => this.clearStatusCenter(), 1500);
+              this.clearStatusLater(1500);
             } catch (err) {
               // User cancellation surfaces as an error here; ignore silently.
               if (!isUserCancellation(err)) {
                 console.error("save-as failed:", err);
                 this.setStatusCenter("save failed");
-                setTimeout(() => this.clearStatusCenter(), 1800);
+                this.clearStatusLater(1800);
               }
             }
           })();
@@ -868,18 +872,22 @@ export class Viewer {
 
   async addHighlight(hl: Highlight): Promise<void> {
     if (!this.highlightStore) return;
+    const generation = this.generation;
     this.userHighlights.push(hl);
     await this.highlightStore.save(this.userHighlights);
+    if (generation !== this.generation || this.disposed) return;
     const pages = new Set(hl.rects.map((r) => r.pageIndex));
     for (const idx of pages) this.renderHighlightsForPage(idx);
   }
 
   async removeHighlight(id: string): Promise<void> {
     if (!this.highlightStore) return;
+    const generation = this.generation;
     const before = this.userHighlights.find((h) => h.id === id);
     if (!before) return;
     this.userHighlights = this.userHighlights.filter((h) => h.id !== id);
     await this.highlightStore.save(this.userHighlights);
+    if (generation !== this.generation || this.disposed) return;
     const pages = new Set(before.rects.map((r) => r.pageIndex));
     for (const idx of pages) this.renderHighlightsForPage(idx);
   }
@@ -982,10 +990,21 @@ export class Viewer {
   }
 
   setStatusCenter(text: string): void {
+    this.statusRevision++;
     this.statusCenter.textContent = text;
   }
 
+  clearStatusLater(delay: number): void {
+    const revision = this.statusRevision, generation = this.generation;
+    const timer = window.setTimeout(() => {
+      this.statusTimers.delete(timer);
+      if (!this.disposed && generation === this.generation && revision === this.statusRevision) this.clearStatusCenter();
+    }, delay);
+    this.statusTimers.add(timer);
+  }
+
   clearStatusCenter(): void {
+    this.statusRevision++;
     this.statusCenter.textContent = "";
     const status = document.getElementById("searchStatus");
     if (status) status.textContent = "";

@@ -1,4 +1,6 @@
 import { test, expect, filter, openLesson, rootA, rootB, pdfIdentity } from './extension-fixture.mjs';
+import { createServer } from 'node:http';
+import { lessonPdf } from '../helpers/pdf-bytes.mjs';
 
 test('[UI-02/UI-05] initial screen does not prompt; native button Enter invokes one active picker', async ({ extension }) => {
   const page = await extension.openBrowser();
@@ -106,10 +108,16 @@ test('[PDF-02/PDF-05] local marks use root/path identity and survive list/PDF na
   await extension.seed(); const page = await extension.openBrowser(); await openLesson(page);
   await page.keyboard.press('2'); await page.keyboard.press('G'); await page.keyboard.press('m'); await page.keyboard.press('a');
   await expect.poll(() => page.evaluate(async identity => (await chrome.storage.local.get(`vimdf:marks:${identity}`))[`vimdf:marks:${identity}`]?.a?.page, pdfIdentity)).toBe(2);
-  await page.keyboard.press('H'); await page.keyboard.press('Enter');
+  await page.keyboard.press('H');
+  await expect(page.getByTestId('local-browser')).toHaveAttribute('data-mode', 'files');
+  await expect(page.getByTestId('local-browser')).toHaveAttribute('data-busy', 'false');
+  await page.keyboard.press('Enter');
   await expect(page.getByTestId('local-browser')).toHaveAttribute('data-mode', 'pdf');
-  await page.keyboard.press('g'); await page.keyboard.press('g'); await page.keyboard.press("'"); await page.keyboard.press('a');
-  await expect(page.locator('#statusCenter')).toContainText('2');
+  await page.keyboard.press('g'); await page.keyboard.press('g');
+  await expect(page.locator('#statusLeft')).toContainText('Page 1 / 2');
+  await page.keyboard.press("'"); await page.keyboard.press('a');
+  // Successful mark jumps update the existing page status, not notifications.
+  await expect(page.locator('#statusLeft')).toContainText('Page 2 / 2');
 });
 
 test('[PDF-04] delayed state storage saves the old snapshot before a different PDF is opened', async ({ extension }) => {
@@ -185,4 +193,37 @@ test('[EXT-04] external connection settings survive an extension-page reload wit
   await extension.configureLauncher(false);
   expect(await extension.send()).toEqual({ reply: false, error: null });
   expect(extension.context.pages().filter(page => page.url().endsWith('/src/local-browser/browser.html'))).toHaveLength(1);
+});
+
+
+test('[UI-06/PDF-05] native history forward resumes the retained PDF and files keep their filter', async ({ extension }) => {
+  await extension.seed(); const page = await extension.openBrowser(); await openLesson(page);
+  await page.keyboard.press('2'); await page.keyboard.press('G');
+  await page.keyboard.press('H');
+  await expect(page.getByTestId('local-browser')).toHaveAttribute('data-mode', 'files');
+  await page.keyboard.press('L');
+  await expect(page.getByTestId('local-browser')).toHaveAttribute('data-mode', 'pdf');
+  await expect(page.locator('#statusLeft')).toContainText('Page 2 / 2');
+  await page.locator('[data-action="back"]').click();
+  await expect(page.getByTestId('browser-filter')).toHaveValue('lesson');
+  await expect(page.getByTestId('browser-location')).toContainText('course');
+});
+
+test('[PDF-05] ordinary URL Viewer bootstrap reuses the shared runtime and PDF search', async ({ extension }) => {
+  let requests = 0;
+  const server = createServer((_request, response) => {
+    requests++;
+    response.writeHead(200, { 'Content-Type': 'application/pdf' }); response.end(lessonPdf());
+  });
+  await new Promise(resolve => server.listen(0, '127.0.0.1', resolve));
+  try {
+    const source = `http://127.0.0.1:${server.address().port}/lesson.pdf`;
+    const page = await extension.context.newPage();
+    await page.goto(`${extension.url('src/viewer/viewer.html')}?file=${source}`);
+    await expect(page.locator('#viewer .page')).toHaveCount(2);
+    await expect(page.locator('#statusLeft')).toContainText('Page 1 / 2');
+    await page.keyboard.press('/'); await page.locator('#searchInput').fill('needle'); await page.keyboard.press('Enter');
+    await expect(page.locator('#searchStatus')).toContainText('2');
+    expect(requests).toBeGreaterThan(0);
+  } finally { await new Promise(resolve => server.close(resolve)); }
 });
