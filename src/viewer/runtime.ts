@@ -30,6 +30,9 @@ export function createViewerRuntime(settings: Settings, navigateHistory?: (direc
     async load(source: PdfSource, options: { signal?: AbortSignal } = {}) {
       const commitMarks = await marks.prepare(source.identity);
       if (options.signal?.aborted) throw new DOMException("Cancelled", "AbortError");
+      // Suppress saves caused by PDF.js initialization until the restored
+      // page belongs to the new document. The caller chooses when to resume.
+      viewer.suspend();
       await viewer.load(source, options);
       commitMarks(); vim.resetTransient(true);
     },

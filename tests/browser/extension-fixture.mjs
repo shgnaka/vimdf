@@ -139,6 +139,10 @@ export const test = base.extend({
 
 export { expect };
 export async function filter(page, query) {
+  // Keyboard navigation starts asynchronous native IDB/enumeration work.
+  // Busy commands are deliberately consumed, so begin the next user action
+  // only after the production page reports that operation complete.
+  await expect(page.getByTestId('local-browser')).toHaveAttribute('data-busy', 'false');
   await page.keyboard.press('/'); await page.getByTestId('browser-filter').fill(query);
   await page.keyboard.press('Enter');
 }

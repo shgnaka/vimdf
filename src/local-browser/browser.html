@@ -14,6 +14,7 @@
       <div class="browser-heading"><div><p class="eyebrow">YOUR DOCUMENTS</p><h1 data-testid="browser-location">Local PDFs</h1></div><div class="browser-actions"><button data-action="roots" type="button">Registered folders</button><button data-action="add" type="button" disabled>Add folder</button></div></div>
       <p data-testid="registry-stale" hidden>Registered folders changed in another tab. <button data-action="reload-registry" type="button">Reload folders</button></p>
       <p id="browser-error" role="alert" hidden></p>
+      <button data-action="retry" type="button" hidden>Retry</button>
       <p id="browser-message" aria-live="polite">Loading saved folders…</p>
       <button data-action="authorize" type="button" hidden>Allow read access</button>
       <label class="browser-search"><span aria-hidden="true">/</span><input data-testid="browser-filter" aria-label="Filter file or folder names" placeholder="Press / to filter names" autocomplete="off" spellcheck="false" readonly /><span id="filter-mode">NAMES</span></label>
@@ -21,6 +22,12 @@
       <div id="browser-list" role="listbox" aria-label="Files and folders" tabindex="0"></div>
       <div id="browser-fallback" hidden><p>Folder selection is unavailable in this browser. Open a PDF file instead.</p><button data-action="pick-file" type="button">Open PDF file</button><input id="fallback-file" type="file" accept="application/pdf,.pdf" hidden /></div>
     </div>
+    <dialog id="remove-root-dialog" aria-labelledby="remove-root-title">
+      <h2 id="remove-root-title">Unregister folder?</h2><p id="remove-root-description"></p>
+      <p>Your files and saved PDF marks are kept.</p>
+      <button data-action="cancel-remove" type="button">Keep folder</button>
+      <button data-action="confirm-remove" type="button">Unregister folder</button>
+    </dialog>
     <footer class="browser-footer"><span><kbd>j</kbd> <kbd>k</kbd> select &nbsp; <kbd>Enter</kbd> open &nbsp; <kbd>h</kbd> parent &nbsp; <kbd>/</kbd> filter &nbsp; <kbd>Esc</kbd> cancel</span><span id="browser-count"></span></footer>
   </section>
   <section id="pdf-surface" hidden aria-label="PDF viewer">
@@ -160,7 +167,7 @@
     </div>
 
   </section>
-  <div id="pdf-loading" hidden role="status">Opening PDF… <button data-action="cancel-pdf" type="button">Cancel</button></div>
+  <div id="pdf-loading" hidden role="status">Opening PDF… <button data-action="cancel-pdf" type="button">Cancel loading</button></div>
 </main>
 <script type="module" src="./browser.ts"></script>
 </body>

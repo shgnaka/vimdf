@@ -179,6 +179,7 @@ async function main(): Promise<void> {
       const previous = runtime.snapshot();
       if (previous) await runtime.save(previous);
       await runtime.load({ data, identity });
+      runtime.resume();
     } catch (err) {
       if ((err as { name?: string }).name === "AbortError") return;
       document.getElementById("statusLeft")!.textContent =
@@ -202,6 +203,7 @@ async function main(): Promise<void> {
 
   try {
     await runtime.load(source);
+    runtime.resume();
   } catch (err) {
     if ((err as { name?: string }).name === "AbortError") {
       document.getElementById("statusLeft")!.textContent = "PDF loading cancelled";

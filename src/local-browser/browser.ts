@@ -19,12 +19,15 @@ let ready = false;
 let stale = false;
 let checking = false;
 let composing = false;
+let removingId: string | null = null;
+const removeDialog = document.getElementById("remove-root-dialog") as HTMLDialogElement;
 let pdf: ReturnType<typeof createLocalPdfController> | null = null;
 const folderApi = typeof (window as PickerWindow).showDirectoryPicker === "function";
 
 function showError(reason: unknown) {
   if ((reason as { name?: string })?.name === "AbortError") return;
   if ((reason as { code?: string })?.code === "storage-conflict") announceStale();
+  root.hidden = false;
   error.textContent = String(reason instanceof Error ? reason.message : reason);
   error.hidden = false;
 }
@@ -37,6 +40,8 @@ function render() {
   document.getElementById("files")!.hidden = mode !== "files";
   document.getElementById("pdf-surface")!.hidden = mode === "files";
   document.getElementById("pdf-loading")!.hidden = mode !== "loading-pdf";
+  action("retry").hidden = error.hidden;
+  action("retry").disabled = checking || !!session?.busy;
   action("add").disabled = !ready || !folderApi || stale || !!session?.busy || checking;
   action("roots").disabled = !ready || !!session?.busy || checking;
   action("authorize").hidden = session?.view !== "permission";
@@ -59,13 +64,24 @@ function render() {
     const directory = isRoot || entry.kind === "directory";
     const icon = document.createElement("span"); icon.className = "row-icon"; icon.setAttribute("aria-hidden", "true"); icon.textContent = directory ? "▱" : "▤";
     const name = document.createElement("span"); name.className = "row-name"; name.textContent = entry.name;
+    if (isRoot && session!.entries.some(other => "id" in other && other.id !== entry.id && other.name === entry.name)) {
+      let length = Math.min(8, entry.id.length);
+      while (length < entry.id.length && session!.entries.some(other => "id" in other && other.id !== entry.id && other.id.startsWith(entry.id.slice(0, length)))) length++;
+      const id = document.createElement("small"); id.className = "row-primary"; id.textContent = ` · ${entry.id.slice(0, length)}`; name.append(id);
+      row.setAttribute("aria-label", `${entry.name} ${entry.id.slice(0, length)}`);
+    }
     const kind = document.createElement("span"); kind.className = "row-kind"; kind.textContent = directory ? "Folder" : "PDF";
     row.append(icon, name, kind);
     if (isRoot) {
       if (entry.isPrimary) { const badge = document.createElement("span"); badge.className = "row-primary"; badge.textContent = "Default"; row.append(badge); }
       const remove = document.createElement("button"); remove.type = "button"; remove.className = "row-remove"; remove.textContent = "Remove";
       remove.setAttribute("aria-label", `Unregister ${entry.name}`); remove.disabled = stale || session!.busy;
-      remove.onclick = event => { event.stopPropagation(); operate(() => session!.removeRoot(entry.id)); };
+      remove.onclick = event => {
+        event.stopPropagation();
+        removingId = entry.id;
+        document.getElementById("remove-root-description")!.textContent = `${entry.name} · ${entry.id}`;
+        removeDialog.showModal(); action("cancel-remove").focus();
+      };
       row.append(remove);
     }
     row.onclick = () => {
@@ -110,16 +126,31 @@ filter.addEventListener("compositionend", () => { composing = false; session?.se
 filter.addEventListener("input", () => { session?.setFilter(filter.value); render(); });
 filter.addEventListener("focus", () => { if (session?.inputMode === "normal") { session.key({ key: "/" }); render(); } });
 document.addEventListener("keydown", event => {
-  if (pdf?.mode !== "files" || event.isComposing || composing) return;
+  if (pdf?.mode !== "files" || event.isComposing || composing || removeDialog.open) return;
   const target = event.target as HTMLElement;
   if (target.closest("button,a,select,textarea,[contenteditable=true]") || (target instanceof HTMLInputElement && target !== filter)) return;
   if (event.key === "L" && !event.ctrlKey && !event.metaKey && !event.altKey) { event.preventDefault(); history.forward(); return; }
   try { if (dispatch(event)) event.preventDefault(); } catch (reason) { event.preventDefault(); showError(reason); render(); }
 });
+action("cancel-remove").onclick = () => { removeDialog.close(); removingId = null; list.focus(); };
+action("confirm-remove").onclick = () => {
+  const id = removingId; removeDialog.close(); removingId = null;
+  if (id) operate(() => session!.removeRoot(id));
+};
 action("add").onclick = () => operate(() => {
   if (session!.view !== "empty" && session!.view !== "roots") session!.openRoots();
   return session!.key({ key: "a" });
 });
+action("retry").onclick = () => {
+  if (!ready) { location.reload(); return; }
+  if (stale) { action("reload-registry").click(); return; }
+  checking = true; render();
+  void storage!.checkRevision().then(changed => {
+    checking = false;
+    if (changed) { announceStale(); return; }
+    error.hidden = true; observe(session!.refresh());
+  }).catch(showError).finally(() => { checking = false; render(); });
+};
 action("roots").onclick = () => { if (ready) { session?.openRoots(); render(); list.focus(); } };
 action("authorize").onclick = () => operate(() => session!.key({ key: "Enter" }));
 action("settings").onclick = () => { void chrome.runtime.openOptionsPage(); };

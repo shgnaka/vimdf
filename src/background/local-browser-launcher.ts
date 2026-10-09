@@ -1,3 +1,5 @@
+import { acceptExternalOpen } from "../local-browser/model.ts";
+
 export const launcherKey = "vimdf.localBrowser.launcher.v1";
 export interface LauncherSettings { version: 1; enabled: boolean; allowedIds: string[] }
 export function launcherSettings(value: unknown): LauncherSettings {
@@ -25,12 +27,9 @@ export function installLocalBrowserLauncher(api: typeof chrome): () => void {
     void (async () => {
       try {
         if (api.extension.inIncognitoContext || sender.tab?.incognito) return false;
-        if (!message || typeof message !== "object" || Array.isArray(message)) return false;
-        const command = message as Record<string, unknown>;
-        if (Object.keys(command).length !== 2 || command.type !== "vimdf.openLocalBrowser" || command.version !== 1) return false;
         const result = await api.storage.local.get(launcherKey);
         const settings = launcherSettings(result[launcherKey]);
-        if (!settings.enabled || !sender.id || !settings.allowedIds.includes(sender.id)) return false;
+        if (!settings.enabled || !acceptExternalOpen(message, { id: sender.id, incognito: sender.tab?.incognito }, settings.allowedIds)) return false;
         const outcome = await captured;
         if (!("window" in outcome)) return false;
         await openLocalBrowser(api, Promise.resolve(outcome.window));
