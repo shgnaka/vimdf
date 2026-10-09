@@ -9,7 +9,7 @@
 | モデル | 84 | 成功。既存 78 件と新規 FM 6 件。フェイクの handle / I/O でモデル契約を検証 |
 | 既存パスワード / スクロール | 34 / 14 | 成功。既存機能の回帰確認 |
 | Node の統合契約 | 50 | 成功。保存の commit / abort、競合、起動、PDF controller と配布 build を検証 |
-| Chromium の拡張・DOM・native IDB | 45 | 個別管理の 18 件を追加して収集。新しい CI 結果は実行後に記録。追加前の 27 件は 19 成功・8 失敗 |
+| Chromium の拡張・DOM・native IDB | 45 | 33 成功・12 失敗。個別管理の新規 18 件は 14 成功・4 失敗。追加前の 27 件は 19 成功・8 失敗 |
 | 代表環境での実 Vimium-C / OS picker | 8 手順 | 未実施。後述の MR-01〜08 を確認する。全 OS・全ブラウザ版の組み合わせは要求しない |
 
 確認日：2026-10-09。追加前は Node 合計 176 件、Chromium 18 件が成功し、[PR の CI 実行](https://github.com/shgnaka/vimdf/actions/runs/37922809087) でも統合契約・ブラウザの両 job が成功。ただし仕様の一部を検査できていなかったため、全要件の実装完了とは扱わない。実 Vimium C / Brave / OS picker の確認は未実施。
@@ -34,11 +34,20 @@
 
 ### 個別のフォルダ管理を検査する追加テスト
 
-2026-10-10 に `tests/local-browser-folder-management.test.mjs` と `tests/browser/local-folder-management.spec.mjs` を追加した。Node 合計 182 件と production build は成功。Playwright は全 45 件を収集する。新しい Chromium の実行結果は CI 完了後に記録し、収集成功を動作確認成功と数えない。
+2026-10-10 に `tests/local-browser-folder-management.test.mjs` と `tests/browser/local-folder-management.spec.mjs` を追加した。Node 合計 182 件と production build は成功。Playwright は全 45 件を実行し、[初回の CI](https://github.com/shgnaka/vimdf/actions/runs/37952708950)（`07c8475fe305c624507692cf0f1717ad644a671c`）は 33 成功・12 失敗。新規 18 件のうち 14 件は成功し、以下の 4 件の不足を検出した。既存 8 件の失敗も未修正。収集成功を動作確認成功と数えない。
+
+| 未充足の条件 | 検出結果 |
+| --- | --- |
+| FM-04 / FM-08：`Esc` で解除取消後の一覧フォーカス | 確認は閉じるが listbox は inactive。取消ボタンの場合は一覧へ戻る |
+| FM-04 / FM-05：プライマリー解除前の次の既定の説明 | 確認画面に次の既定となる Books の説明がない |
+| FM-04 / FM-05：最後の登録を解除した後の説明 | 確認画面に未登録になる説明がない |
+| FM-07：native commit 失敗の通知 | put 成功後に transaction を abort しても alert が表示されない |
 
 個別解除の確認・取消とフォーカス、同名登録の識別、次の既定と最後の登録の説明、native transaction の保留と put 成功後の abort、別タブの変更、実ファイル bytes と全保存先の保持、読み込み済み PDF の保持と再登録後の新 identity を検査する。実 Vimium-C を導入していない構成の設定ボタン・フォルダ画面・PDF 検索も実行する。この結果を通常の Vimium 自体の起動連携や、特定の Vimium-C 版の動作確認には一般化しない。
 
 fixture の追加は、別々の親にある同名の native フォルダ、単独の登録、選択対象を変えられる picker 境界だけ。アプリの解除処理・公開状態・確認文・フォーカスをテスト側で修正しない。API 不在、保存 DB の不正、単なる権限失効も別のシナリオとして扱う。失敗は通常の assertion として返し、`skip` / `todo` / `test.fail` に変更しない。
+
+初回結果の確認後、保持の検査を解除対象と残る登録の両方の PDF 保存データへ拡張し、絞り込み後の index 0 から元の 2 件目を解除する。取消・最後の解除にも保存データ保持を検査する。native abort の検査は先に rollback・元の一覧への復帰・新たな解除の成功を確認し、その後に完了時点のエラー通知を検査する。通知の欠落で他の検査が到達不能になることを避ける。
 
 ```sh
 npm ci

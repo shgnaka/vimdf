@@ -37,6 +37,22 @@ async function savedData(extension) {
   }));
 }
 
+async function seedSavedData(extension) {
+  await extension.setupPage.evaluate(async identities => {
+    await chrome.storage.sync.set({ theme: 'dark', scrollStep: 113, rememberLastPage: true });
+    const records = {};
+    for (const identity of identities) {
+      records[`vimdf:state:${identity}`] = { page: 2, scrollTop: 42 };
+      records[`vimdf:marks:${identity}`] = { a: { page: 2, x: 0, y: 100 } };
+      records[`vimdf:highlights:${identity}`] = [{ id: 'retained-highlight', page: 1, color: '#ff0000', rects: [{ x: 0.1, y: 0.2, w: 0.3, h: 0.1 }] }];
+    }
+    records['vimdf.passwords.v1'] = { version: 1, autoFill: true,
+      records: [{ id: 'retained-password', name: 'Test PDF', password: 'fixture-password', enabled: true, shared: false }],
+      remembered: Object.fromEntries(identities.map(identity => [identity, 'retained-password'])) };
+    await chrome.storage.local.set(records);
+  }, [pdfIdentity, `https://local-pdf.vimdf.invalid/${rootB}/lesson.pdf`]);
+}
+
 test('[FM-01/FM-04/FM-05] same-name folders have distinct accessible identities and filtering unregisters only the confirmed ID', async ({ extension }) => {
   await extension.seed({ sameNames: true }); const page = await extension.openBrowser(); await roots(page);
   const before = await extension.registry(); const options = page.getByRole('option');
@@ -61,8 +77,9 @@ test('[FM-01/FM-04/FM-05] same-name folders have distinct accessible identities 
 
 for (const cancel of ['button', 'Escape']) {
   test(`[FM-04/FM-08] ${cancel} cancels unregister without changes and returns keyboard focus to the filtered list`, async ({ extension }) => {
-    await extension.seed(); const page = await extension.openBrowser(); await roots(page); await filter(page, 'books');
-    const before = await extension.registry();
+    await extension.seed(); await seedSavedData(extension);
+    const page = await extension.openBrowser(); await roots(page); await filter(page, 'books');
+    const before = await extension.registry(); const metadata = await savedData(extension);
     await unregister(row(page, 'Books')).click();
     await expect(dialog(page)).toContainText(rootB);
     await expect(dialog(page).locator('[data-action="cancel-remove"]')).toBeFocused();
@@ -71,11 +88,13 @@ for (const cancel of ['button', 'Escape']) {
     await expect(page.getByTestId('browser-filter')).toHaveValue('books');
     if (cancel === 'Escape') await page.keyboard.press('Escape');
     else await dialog(page).locator('[data-action="cancel-remove"]').click();
-    await expect(dialog(page)).toBeHidden(); await expect(page.getByRole('listbox')).toBeFocused();
+    await expect(dialog(page)).toBeHidden();
     await expect(row(page, 'Books')).toHaveAttribute('aria-selected', 'true');
     expect(await extension.registry()).toEqual(before);
+    expect(await savedData(extension)).toEqual(metadata);
     expect(await page.evaluate(() => ({ picks: window.__pickerCalls, permissions: window.__permissionCalls })))
       .toEqual({ picks: [], permissions: [] });
+    await expect(page.getByRole('listbox')).toBeFocused();
   });
 }
 
@@ -95,20 +114,11 @@ test('[FM-04/FM-05] the last-folder confirmation explains the resulting unregist
   expect(await extension.registry()).toEqual(before);
 });
 
-test('[FM-05/FM-06] individual unregister preserves actual file bytes, every other registration, PDF stores and both settings stores', async ({ extension }) => {
+test('[FM-04/FM-05/FM-06] filtered individual unregister preserves actual file bytes, remaining and removed roots PDF stores, and both settings stores', async ({ extension }) => {
   await extension.seed(); await extension.configureLauncher();
-  await extension.setupPage.evaluate(async identity => {
-    await chrome.storage.sync.set({ theme: 'dark', scrollStep: 113, rememberLastPage: true });
-    await chrome.storage.local.set({
-      [`vimdf:state:${identity}`]: { page: 2, scrollTop: 42 },
-      [`vimdf:marks:${identity}`]: { a: { page: 2, x: 0, y: 100 } },
-      [`vimdf:highlights:${identity}`]: [{ id: 'retained-highlight', page: 1, color: '#ff0000', rects: [{ x: 0.1, y: 0.2, w: 0.3, h: 0.1 }] }],
-      'vimdf.passwords.v1': { version: 1, autoFill: true,
-        records: [{ id: 'retained-password', name: 'Test PDF', password: 'fixture-password', enabled: true, shared: false }],
-        remembered: { [identity]: 'retained-password' } },
-    });
-  }, pdfIdentity);
-  const page = await extension.openBrowser(); await roots(page);
+  await seedSavedData(extension);
+  const page = await extension.openBrowser(); await roots(page); await filter(page, 'books');
+  await expect(page.getByRole('option')).toHaveCount(1);
   const before = await extension.registry(); const files = await nativeFiles(extension); const metadata = await savedData(extension);
   await confirm(page, row(page, 'Books'));
   const after = await extension.registry();
@@ -136,12 +146,14 @@ test('[FM-04/FM-05] unregistering a revoked primary chooses the first remaining 
 });
 
 test('[FM-05] confirming the last unregister clears only the registry and does not automatically open a picker', async ({ extension }) => {
-  await extension.seed({ singleRoot: true }); const page = await extension.openBrowser(); await roots(page);
-  const before = await extension.registry(); const files = await nativeFiles(extension);
+  await extension.seed({ singleRoot: true }); await seedSavedData(extension);
+  const page = await extension.openBrowser(); await roots(page);
+  const before = await extension.registry(); const files = await nativeFiles(extension); const metadata = await savedData(extension);
   await confirm(page, row(page, 'University'));
   await expect(screen(page)).toHaveAttribute('data-view', 'empty'); await expect(page.getByRole('option')).toHaveCount(0);
   expect(await extension.registry()).toEqual({ revision: before.revision + 1, primaryId: null, roots: [] });
   expect(await page.evaluate(() => window.__pickerCalls)).toEqual([]); expect(await nativeFiles(extension)).toEqual(files);
+  expect(await savedData(extension)).toEqual(metadata);
 });
 
 test('[FM-07] a native transaction abort after put success retains registrations and Escape return state, then permits a fresh retry', async ({ extension }) => {
@@ -158,7 +170,8 @@ test('[FM-07] a native transaction abort after put success retains registrations
       return request;
     };
   });
-  await confirm(page, row(page, 'University')); await expect(page.getByRole('alert')).toBeVisible();
+  await confirm(page, row(page, 'University'));
+  const errorWasVisible = await page.getByRole('alert').isVisible();
   expect(await page.evaluate(() => window.__removalAborted)).toBe(true); expect(await extension.registry()).toEqual(before);
   await expect(page.getByRole('option')).toHaveCount(2); await page.keyboard.press('Escape');
   await expect(screen(page)).toHaveAttribute('data-view', 'browse'); await expect(page.getByTestId('browser-location')).toContainText('course');
@@ -167,6 +180,9 @@ test('[FM-07] a native transaction abort after put success retains registrations
   await roots(page); await confirm(page, row(page, 'University'));
   expect((await extension.registry()).roots.map(root => root.id)).toEqual([rootB]);
   expect((await extension.registry()).revision).toBe(before.revision + 1);
+  // Check feedback after proving rollback, return-state preservation and a
+  // successful fresh retry, so a missing notice cannot hide those regressions.
+  expect(errorWasVisible, 'A failed registry commit must be reported when the operation completes').toBe(true);
 });
 
 test('[FM-05/FM-08] an in-flight native save keeps the old rows visible and blocks duplicate keys and buttons until commit', async ({ extension }) => {
