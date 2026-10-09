@@ -2,7 +2,7 @@
 
 ## 適用範囲と実装状態
 
-[基本仕様](vimium-local-browser.md) の複数登録・プライマリー・キー操作を、実際の拡張画面へ接続するための要件。`src/local-browser/` のモデルと 78 件のテストは実装済み。本書で定義する DOM、実 IndexedDB、共有 Viewer runtime、外部起動リスナー、設定 UI は未実装。[統合テストの契約・対応表](local-browser-testing.md) に Node の 50 件、Chromium の 16 件、実機確認の手順を追加した。未実装を検出するテストは現在失敗しており、機能の完了を意味しない。
+[基本仕様](vimium-local-browser.md) の複数登録・プライマリー・キー操作を、実際の拡張画面へ接続する要件。モデル、専用画面、IndexedDB アダプター、共有 Viewer runtime、外部起動リスナー、設定 UI を実装済み。[統合テストの契約・対応表](local-browser-testing.md) に自動テストと未実施の実機確認を記録する。
 
 | 領域 | 採用する構成 | 現在のコードとの接点 |
 | --- | --- | --- |
@@ -83,7 +83,7 @@ flowchart TD
 
 更新を検知しても、他のタブの表示中のフォルダや PDF を勝手に切り替えない。「登録が更新されました」を表示し、新たな一覧移動・PDF 読取・登録変更の前に最新状態の再読み込みを促す。再読み込みは最新のプライマリーのルートから開始する。保存競合では自動上書き・自動再実行をせず、最新の登録を復元してから利用者が再度選択する。確認や許可済みの結果を古い登録へ適用しない。
 
-現在の `FolderRegistry` は同じプライマリーを確定した場合に save を省略する。実アダプターとの統合では、この確定も revision の比較・commit を通すようにモデルを補う。古いタブが「すでにプライマリー」と判断して、DB に保存された別のプライマリーを無視するケースを防ぐ。重複フォルダの追加自体は既存契約どおり ID を再利用して保存せず、更新通知があれば最新一覧の再読み込みを促す。
+`FolderRegistry` は同じプライマリーの明示確定も save による revision の比較・commit を通す。古いタブが「すでにプライマリー」と判断して、DB に保存された別のプライマリーを無視するケースを防ぐ。重複フォルダの追加自体は既存契約どおり ID を再利用して保存せず、更新通知があれば最新一覧の再読み込みを促す。
 
 ### 障害と保存の寿命
 
@@ -95,7 +95,7 @@ flowchart TD
 
 ### 共通 runtime とデータ経路
 
-`viewer.ts` は現在、Viewer クラスと通常起動処理が同じファイルにあり、末尾の `main()` が import 時にも動く。Viewer core と bootstrap を分離し、既存 `viewer.html` と新しい `browser.html` が共通 runtime を使えるようにする。新しいページへの import で MIME stream 解決や通常ファイル選択画面を勝手に開始しない。共有 HTML 部品の Viewer 要素 ID は 1 ページに 1 組とし、ブラウザの名前検索欄と PDF の `searchInput` を別にする。
+Viewer クラスは `src/viewer/core.ts`、通常 URL / MIME 起動は `viewer.ts`、共有コントローラーと設定購読は `runtime.ts` に分離した。既存 `viewer.html` と新しい `browser.html` は共通 runtime を使う。新しいページへの import で MIME stream 解決や通常ファイル選択画面を勝手に開始しない。共有 HTML 部品の Viewer 要素 ID は 1 ページに 1 組とし、ブラウザの名前検索欄と PDF の `searchInput` を別にする。
 
 モデルの `openPdf(File,identity)` は、`File.arrayBuffer()` を経て `viewer.load({data,identity})` へ接続する。`url` を設定せず、synthetic identity をネットワーク取得、DNR redirect、native viewer bypass に渡さない。File、handle、ArrayBuffer を `chrome.runtime.sendMessage()` で background へ運ばない。Chrome の拡張メッセージは JSON serialization のため、このデータ経路には用いない。
 
@@ -115,7 +115,7 @@ identity はモデルの `https://local-pdf.vimdf.invalid/<登録 ID>/<相対パ
 
 既存の Viewer は document 全体の keydown / keyup リスナーを attach する。統合では suspend / resume / dispose、または同等の単一ルーターを追加し、一覧と Viewer が同じキーを両方処理しないようにする。非表示の Viewer がフォーカスを奪ったり、`/` を PDF 検索として処理したりしないこと。
 
-Viewer の非同期 load、outline、highlight、restoreState、遅延 save は文書の generation を照合する。特に現在の `saveState()` のように、保存 key の決定後に await してから表示中の page / scroll を読む方式は、文書交換時に補う。入力時点の snapshot を保存し、旧文書の遅い処理が新しい画面や別の文書状態を上書きしない。
+Viewer の非同期 load、outline、highlight、restoreState、遅延 save は文書の generation を照合する。`snapshot()` / `saveSnapshot()` / `flush()` は await 前に identity・page・scroll を固定し、保存を直列化する。入力時点の snapshot を保存し、旧文書の遅い処理が新しい画面や別の文書状態を上書きしない。
 
 パスワードの自動候補・手入力・成功後の登録は既存処理を共用する。本文検索の smart case、`n` / `N`、マーク、ハイライト、ズーム、印刷、保存も共用する。PDF を新しく開いたときは検索やジャンプなどの一時状態を初期化する。保存・印刷は現在の PDFDocument のバイト列を使い、identity を fetch しない。フォルダ登録の `mode:"read"` を書込許可へ拡張しない。
 

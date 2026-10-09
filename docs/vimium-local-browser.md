@@ -4,9 +4,9 @@
 
 Vimium-C の Vomnibar で `vimdf` を確定すると、VimDF 専用タブで登録済みフォルダの PDF を Vim キー操作で選ぶ。複数のフォルダを登録し、そのうち 1 つをプライマリーフォルダとして保存する。起動時はプライマリーのルートを表示し、登録フォルダ一覧で別のフォルダを確定すると、プライマリーを変更して開く。
 
-この PR は仕様・要件、受け入れテスト、および非 DOM モデルを実装する。`LocalBrowser`、`FolderRegistry`、`LocalBrowserSession`、外部起動コマンドの検証関数を実装済み。DOM、IndexedDB アダプター、拡張メッセージの配線、Viewer への接続は今後の実装対象であり、この段階では拡張画面から利用できない。単一フォルダ用の旧 `RootAccess` テスト契約を `FolderRegistry` に置き換える。旧契約は未実装なので、既存利用者データの移行を前提にしない。
+この PR は専用画面、複数登録モデル、IndexedDB 保存、共有 Viewer、外部起動の許可設定を実装する。ツールバーと設定画面から通常タブを開き、フォルダを登録・選択して PDF を同じタブ内で表示できる。旧 `RootAccess` は未公開・未実装の契約だったため、そのデータ移行は前提にしない。
 
-未実装の接続部分は [統合仕様](local-browser-integration.md) に定義する。同じ専用タブ内で一覧と PDF を切り替える構成、実 IDB の revision 比較、Viewer の文書交換、外部起動設定と実機の受け入れ条件を扱う。
+[統合仕様](local-browser-integration.md) に同一タブ内の一覧 / PDF 切り替え、IDB の revision 比較、Viewer の文書交換、外部起動と実機の受け入れ条件を定義する。
 
 Vomnibar の候補にローカルファイルを追加しない。VimDF は `omnibox.keyword` を登録せず、既存のアドレスバーや他の検索エンジンの設定を変更しない。アーカイブされた別の omnibar プロジェクトには依存しない。対象は File System Access API を利用できるデスクトップブラウザの拡張専用タブ。Chrome と Brave の対応状況・権限保持は実機確認を必要とする。
 
@@ -119,7 +119,7 @@ Session の `key(event)` は `{key,repeat?,ctrlKey?,altKey?,metaKey?,isComposing
 
 `npm run test:local-browser` は `tests/local-browser*.test.mjs` をすべて実行する。
 
-画面・IndexedDB・共有 Viewer・外部起動の追加テストは、別の `npm run test:local-integration` と `npm run test:local-browser:browser` で実行する。[テスト契約と対応表](local-browser-testing.md) を参照。接続部分は未実装のため追加テストはまだ緑ではなく、既存の 78 件に成功分として加算しない。
+画面・IndexedDB・共有 Viewer・外部起動の追加テストは、別の `npm run test:local-integration` と `npm run test:local-browser:browser` で実行する。[テスト契約と対応表](local-browser-testing.md) を参照。既存モデル 78 件、統合契約 50 件、既存回帰 48 件をそれぞれ検証する。Chromium の拡張・DOM 試験と実 Chrome / Brave / Vimium C の手動確認は別に記録する。
 
 | テストファイル | 確認する要件 |
 | --- | --- |

@@ -2,15 +2,17 @@
 
 ## 状態と実行方法
 
-[統合仕様](local-browser-integration.md) の 21 条件を、実装済みモデル、追加の契約テスト、実ブラウザのテスト、実機確認へ分ける。製品コードはこの更新で変更しない。新しいテストは仮実装で成功させず、必要なモジュールや公開操作が存在しなければ失敗する。`skip` / `todo` / `continue-on-error` で未実装を成功扱いにしない。
+[統合仕様](local-browser-integration.md) の 21 条件を、モデル、統合契約、実ブラウザのテスト、実機確認へ分ける。専用画面はテストと同じ本番モデル・アダプター・Viewer runtime を使用する。`skip` / `todo` / `continue-on-error` による未実装の成功扱いは行わない。
 
 | 層 | テスト数 | 現在の確認状態 |
 | --- | --- | --- |
 | 既存モデル | 78 | 成功。フェイクの handle / I/O でモデル契約を検証 |
 | 既存パスワード / スクロール | 34 / 14 | 成功。既存機能の回帰確認 |
-| Node の統合契約 | 50 | 実行済み。1 成功・49 失敗。未実装の接続と同一 primary の競合見逃しを検出 |
-| Chromium の拡張・DOM・native IDB | 16 | テスト収集まで確認。ローカル環境の Chromium ダウンロード失敗で実行不能。成功未確認 |
+| Node の統合契約 | 50 | 成功。保存の commit / abort、競合、起動、PDF controller と配布 build を検証 |
+| Chromium の拡張・DOM・native IDB | 18 | 成功。CI で実ハンドルの clone、画面、パスワード・検索・マーク、履歴、通常 URL Viewer を検証 |
 | 実 Vimium-C / Chrome / Brave | 8 手順 | 未実施。後述の MR-01〜08 を完了条件にする |
+
+確認日：2026-10-09。Node 合計 176 件、Chromium 18 件が成功し、[PR の CI 実行](https://github.com/shgnaka/vimdf/actions/runs/37922809087) でも統合契約・ブラウザの両 job が成功。通常 URL の Viewer bootstrap、履歴で保持中の PDF を再開する回帰試験を 2 件追加した。実 Vimium C / Brave / OS picker の確認は未実施。
 
 ```sh
 npm ci
@@ -26,11 +28,11 @@ npm run test:local-browser:browser
 
 ブラウザテストは Playwright の Chromium を persistent context で起動し、実 `dist/` とテスト専用の送信拡張を読み込む。製品の DOM、Viewer、IndexedDB、拡張メッセージを利用し、picker / permission の境界だけを制御する。OPFS の native `FileSystemDirectoryHandle` を保存するため、native clone を確認できる。ただし OS の実ディレクトリの picker と権限保持は MR-01 が必要。合成した IME イベントと本物の日本語 IME、送信拡張と本物の Vomnibar も区別する。
 
-`.github/workflows/local-integration.yml` は独立した手動実行 workflow。`contracts` と `browser` の両 job は失敗をそのまま返す。現在の通常 CI は既存の動作を検証し、この赤の suite の成功を主張しない。接続実装を終えて両 suite が成功した段階で、push / PR の必須確認へ組み込む。ブラウザ失敗時の trace と screenshot はテスト fixture が保存する。
+`.github/workflows/test.yml` は既存の 126 件と build、`.github/workflows/local-integration.yml` は統合契約と Chromium の両 job を push / PR で実行する。両 suite とも失敗をそのまま返す。ブラウザ失敗時の trace と screenshot は fixture が保存する。ローカル環境では Chromium の取得が失敗したため、実ブラウザの結果は GitHub Actions の実行を根拠とする。
 
-## 次の実装が満たす接続契約
+## 本番実装の接続契約
 
-自動テストが import する API を固定する。以下は今後の実装境界であり、テスト専用の代替製品を作るための API ではない。bootstrap と production page も同じ実装を使うこと。
+自動テストが import する API を固定する。以下は本番ページからも使用する実装境界。テストだけの代替製品は用いない。
 
 | 接点 | API と意味 |
 | --- | --- |
@@ -55,6 +57,8 @@ Figma でレイアウトや色・余白を変更してもテストが壊れな�
 | 操作ボタン | `data-action="add"` / `roots` / `pick-file` / `reload-registry`。関連処理を開始できないときは disabled |
 | エラー | `role="alert"`。DB 失敗・API 非対応・権限確認を未登録成功と混同しない |
 | PDF 表示 | 既存の `viewer`、`viewerContainer`、`searchInput`、`searchStatus`、`statusCenter` とパスワード dialog を共用 |
+
+フォルダ移動後の次の検索は画面の `data-busy="false"` を待って開始する。busy 中の入力を無視する契約を、テストのキー連打で破らない。マーク復帰は一度 1 ページ目へ移動したことを確認してから、既存のページ表示 `statusLeft` が 2 ページ目に戻ることを検証する。成功時に通知欄 `statusCenter` へページ番号が出るとは仮定しない。
 
 Node の controller テストは runtime の呼び出しを検証する。実際の PDF.js、MarksStore、SearchController、遅い outline / highlight などの安全性は、この controller のフェイクだけでは保証しない。ブラウザテストと MR-04 / 05 / 08 も完了させる。
 

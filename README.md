@@ -138,6 +138,32 @@ Either way, you can always **drop a PDF onto the viewer** or pick one from
 the prompt. Reading a file you hand over directly needs no permission at all,
 and the document keeps its marks, highlights and last page.
 
+### Registered folders and Vimium C
+
+Click the VimDF toolbar icon, or **Open local PDF browser** in Options, to
+open the folder browser. **Add folder** registers one folder at a time.
+Use `j` / `k` to select, `Enter` / `l` to open, `h` to move to the parent,
+and `/` to filter the current list by name. At a registered root, `h` opens
+the registered-folder list. Confirming another folder makes it the default
+starting folder; `Esc` returns without changing it.
+
+PDFs open in the same tab with the existing Viewer keys: `/` searches the
+PDF text and `n` / `N` move between matches. `H` or **Files** returns to the
+same folder, filter and selection. Browser history can resume the retained
+PDF; reloading starts at the saved primary folder. There is no recursive
+folder search or cross-document text index.
+
+Folder handles and the primary selection are saved in IndexedDB on this
+device. Another tab's changes are announced and require an explicit reload.
+Removing a registration keeps your files and saved PDF data.
+
+For Vimium C, enable **Allow external extension launches** in Options,
+register its extension ID, and copy the generated key mapping and search
+engine commands into Vimium C. External launches are disabled by default.
+The connection settings stay on this device. See the
+[setup and key specification](docs/vimium-local-browser.md) and
+[test coverage and manual checks](docs/local-browser-testing.md).
+
 ## 🛠 Development
 
 ```bash
@@ -154,7 +180,9 @@ src/
 ├── common/settings.ts             # chrome.storage.sync schema + migrations
 ├── options/                       # options page (HTML/CSS/TS)
 └── viewer/                        # the viewer itself
-    ├── viewer.ts                  # PDF.js integration, state persistence
+    ├── viewer.ts                  # normal URL / MIME bootstrap
+    ├── core.ts                    # PDF.js integration, state persistence
+    ├── runtime.ts                 # shared controllers and lifecycle
     ├── vim-controller.ts          # root keydown dispatcher
     ├── caret-mode.ts              # modal text-caret navigation & selection
     ├── finder.ts                  # Telescope-style fuzzy finder (T)
