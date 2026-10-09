@@ -37,6 +37,9 @@ export class LocalBrowser {
   get selectedIndex(): number { return this.selection.selectedIndex; }
   get filter(): string { return this.selection.filter; }
   get atRoot(): boolean { return this.path.length === 1; }
+  get location(): string { return this.path.map(directory => directory.name).join(" / "); }
+
+  select(index: number): void { this.selection.select(index); }
 
   key(key: string): boolean { return this.selection.key(key); }
   setFilter(text: string): void { this.selection.setFilter(text); }

@@ -30,6 +30,38 @@ type ScrollKey = "j" | "k" | "h" | "l";
 
 export class VimController {
   private mode: Mode = "normal";
+  private enabled = false;
+  private attached = false;
+  private listeners = new AbortController();
+
+  suspend(): void { this.enabled = false; this.scroller.stop(); }
+  resume(): void { this.enabled = true; this.viewer.container.focus(); }
+  resetTransient(newDocument = false): void {
+    this.scroller.stop();
+    this.hints.deactivate();
+    this.caretMode.exit();
+    this.finder.hide();
+    this.closeHelp();
+    this.search.clear();
+    this.viewer.findStatusEnabled = false;
+    this.viewer.clearStatusCenter();
+    this.viewer.setModeLabel("");
+    document.getElementById("searchbar")?.setAttribute("hidden", "");
+    const input = document.getElementById("searchInput") as HTMLInputElement | null;
+    if (input) input.value = "";
+    clearOutlineFocus();
+    this.pendingCount = "";
+    this.pendingG = this.pendingZ = this.pendingOutlineG = this.helpPendingG = false;
+    this.pendingMark = null;
+    this.mode = "normal";
+    if (newDocument) { this.jumps = new JumpList(); this.finder.resetDocument(); }
+  }
+  dispose(): void {
+    this.suspend(); this.resetTransient(); this.listeners.abort();
+    document.removeEventListener("keydown", this.onKeyDown, true);
+    document.removeEventListener("keyup", this.onKeyUp, true);
+    this.finder.dispose();
+  }
 
   // Multi-key buffers
   private pendingCount = "";
@@ -48,6 +80,7 @@ export class VimController {
     private viewer: Viewer,
     private marks: MarksStore,
     private search: SearchController,
+    private navigateHistory?: (direction: "back" | "forward") => void,
   ) {
     this.scroller = new ContinuousScroll(viewer.container);
     this.hints = new HintController(viewer);
@@ -69,35 +102,39 @@ export class VimController {
   }
 
   attach(): void {
+    if (this.attached) return;
+    this.attached = true;
+    this.enabled = true;
+    const signal = this.listeners.signal;
     document.addEventListener("keydown", this.onKeyDown, true);
     document.addEventListener("keyup", this.onKeyUp, true);
     // Stop continuous scroll if window loses focus (e.g. Cmd+Tab) since we
     // won't get a keyup.
-    window.addEventListener("blur", () => this.scroller.stop());
+    window.addEventListener("blur", () => this.scroller.stop(), { signal });
     document.addEventListener("visibilitychange", () => {
       if (document.hidden) this.scroller.stop();
-    });
+    }, { signal });
     document.addEventListener("focusin", (e) => {
       const target = e.target;
       if (target instanceof HTMLInputElement || target instanceof HTMLTextAreaElement ||
           (target instanceof HTMLElement && target.isContentEditable)) {
         this.scroller.stop();
       }
-    });
+    }, { signal });
 
     const help = document.getElementById("help");
     help?.addEventListener("click", (e) => {
-      if (e.target === help) this.toggleHelp();
-    });
+      if (this.enabled && e.target === help) this.toggleHelp();
+    }, { signal });
 
     // Forward / to search; search handles its own Esc/Enter via SearchController.
     const searchInput = document.getElementById(
       "searchInput",
     ) as HTMLInputElement | null;
-    searchInput?.addEventListener("keydown", this.onSearchKeyDown);
+    searchInput?.addEventListener("keydown", this.onSearchKeyDown, { signal });
     searchInput?.addEventListener("input", () => {
-      this.search.queryChanged(searchInput.value);
-    });
+      if (this.enabled) this.search.queryChanged(searchInput.value);
+    }, { signal });
 
     // Trackpad pinch + Ctrl/Cmd+wheel: route through PDF.js zoom rather than
     // browser page-zoom, which has its own floor and drifts out of sync with
@@ -105,12 +142,12 @@ export class VimController {
     this.viewer.container.addEventListener(
       "wheel",
       (e: WheelEvent) => {
-        if (!e.ctrlKey && !e.metaKey) return;
+        if (!this.enabled || (!e.ctrlKey && !e.metaKey)) return;
         e.preventDefault();
         const factor = Math.exp(-e.deltaY * 0.01);
         this.viewer.zoomBy(factor);
       },
-      { passive: false },
+      { passive: false, signal },
     );
 
     // Keep viewer focused so keydowns land on document, not a stray element.
@@ -120,6 +157,7 @@ export class VimController {
   // --- handlers ---
 
   private onSearchKeyDown = (e: KeyboardEvent): void => {
+    if (!this.enabled || e.isComposing || e.repeat) return;
     if (e.key === "Escape") {
       e.preventDefault();
       this.exitSearch({ clear: true });
@@ -131,6 +169,7 @@ export class VimController {
   };
 
   private onKeyDown = (e: KeyboardEvent): void => {
+    if (!this.enabled || e.isComposing) return;
     if (document.querySelector(".password-dialog[open]")) {
       this.scroller.stop();
       return;
@@ -596,11 +635,11 @@ export class VimController {
         return;
       case "H":
         e.preventDefault();
-        this.sendTabCommand("back");
+        if (this.navigateHistory) this.navigateHistory("back"); else this.sendTabCommand("back");
         return;
       case "L":
         e.preventDefault();
-        this.sendTabCommand("forward");
+        if (this.navigateHistory) this.navigateHistory("forward"); else this.sendTabCommand("forward");
         return;
       case "t":
         e.preventDefault();
@@ -691,7 +730,7 @@ export class VimController {
   }
 
   private onKeyUp = (e: KeyboardEvent): void => {
-    this.scroller.release(e.key);
+    if (this.enabled) this.scroller.release(e.key);
   };
 
   private enterHint(newTab: boolean): void {

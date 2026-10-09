@@ -228,3 +228,6 @@ button.clear {
 .password-record { border: 1px solid var(--border); border-radius: 8px; padding: 14px; }
 .password-form label { display: block; }
 .password-form input[type="password"], .password-record input { max-width: 100%; }
+
+#localBrowserSettings textarea { min-width: 240px; max-width: 100%; font: 12px monospace; }
+#launcherCommands { overflow-x: auto; white-space: pre-wrap; overflow-wrap: anywhere; padding: 16px; border: 1px solid #8885; border-radius: 6px; font-size: 12px; }

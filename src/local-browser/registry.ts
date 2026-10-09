@@ -149,7 +149,9 @@ export class FolderRegistry {
   }
 
   private async makePrimary(root: RegisteredFolder): Promise<void> {
-    if (root.id !== this.primaryId) await this.commit(this.roots, root.id);
+    // An explicit selection also checks the revision when it looks unchanged
+    // in this tab. Another tab may already have changed the saved primary.
+    await this.commit(this.roots, root.id);
   }
 
   private async commit(roots: readonly RegisteredFolder[], primaryId: string | null): Promise<void> {

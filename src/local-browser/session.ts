@@ -46,6 +46,7 @@ export class LocalBrowserSession {
   get pendingRootId(): string | null { return this.pendingId; }
   get busy(): boolean { return this.running; }
   get inputMode(): "normal" | "filter" { return this.mode; }
+  get location(): string { return this.view === "browse" ? this.browser!.location : "Registered folders"; }
   get entries(): readonly (LocalEntry | RegisteredEntry)[] {
     return this.view === "browse" ? this.browser!.entries : this.view === "roots" ? this.rootSelection.entries : [];
   }
@@ -99,6 +100,37 @@ export class LocalBrowserSession {
     this.pendingG = false;
     if (this.view === "browse") this.browser!.setFilter(text);
     else if (this.view === "roots") this.rootSelection.setFilter(text);
+  }
+
+  select(index: number): void {
+    if (this.busy || !Number.isInteger(index) || index < 0 || index >= this.entries.length) return;
+    if (this.view === "browse") this.browser!.select(index);
+    else if (this.view === "roots") this.rootSelection.select(index);
+    this.pendingG = false;
+  }
+
+  openRoots(): void {
+    if (this.busy) return;
+    this.returnToBrowser = this.view === "browse";
+    this.showRoots(this.currentRootId ?? this.registry.primaryId);
+  }
+
+  removeRoot(id: string): Promise<void> {
+    return this.run(async () => {
+      await this.registry.remove(id);
+      if (this.currentRootId === id) {
+        this.browser = null;
+        this.currentRootId = null;
+        this.returnToBrowser = false;
+      }
+      this.pendingId = null;
+      if (this.registry.roots.length === 0) {
+        this.browser = null;
+        this.currentRootId = null;
+        this.currentView = "empty";
+        this.returnToBrowser = false;
+      } else this.showRoots(this.registry.primaryId);
+    });
   }
 
   // false is returned synchronously for unhandled input. A Promise always

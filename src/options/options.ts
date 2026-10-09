@@ -1,3 +1,4 @@
+import { setupLauncherOptions } from "./launcher-options";
 import { setupPasswordOptions } from "./password-options";
 import {
   DEFAULT_SETTINGS,
@@ -407,3 +408,5 @@ async function refreshLocalFileStatus(): Promise<void> {
 
 void refreshLocalFileStatus();
 setupPasswordOptions();
+
+void setupLauncherOptions();
