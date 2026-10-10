@@ -115,6 +115,17 @@ PDF の手入力 dialog に `Unlock vault` を用意し、解錠成功後は実�
 
 ## 検証記録
 
-ローカルで Node の既存 34 ケースは成功。新規 101 ケースは独立 oracle 2 件と実非暗号化 PDF 1 件が成功し、残りは未実装の暗号化 store / policy / factory を検出する。本番ソースは変更していない。既存モデル 84・scroll 14・統合契約 50、型検査と production build も成功。
+検証コミットは `3eae5f26d0fa6e948bdbef338fa7ef5c2fbe4c69`。CI の checkout がこの head を main へマージしたものと確認し、単に最新 run の表示だけで結果を判断していない。本番ソースは変更していない。
 
-Chromium は全 111 ケース（既存 86 + 新規 25）の構文・収集を確認した。実行結果は CI 確認後に追記する。ローカルに Chromium 実行ファイルがないため、収集成功を画面試験成功として数えない。
+| 範囲 | 結果 | 根拠 |
+| --- | --- | --- |
+| 新規 Node 101 | 3 成功・98 失敗 | ローカルの通常 TAP と [Node CI](https://github.com/shgnaka/vimdf/actions/runs/38047397107)。成功は独立 oracle 2 件と実非暗号化 PDF 1 件。失敗は暗号化 store / policy / factory の不足 |
+| 旧パスワード 34 | 全件成功 | 同じ Node CI は合計 135、37 成功・98 失敗。追加条件と旧機能を区別 |
+| 新規 Chromium 25 | 1 成功・24 失敗 | [Chromium / 統合契約 CI](https://github.com/shgnaka/vimdf/actions/runs/38047397101)。成功は非暗号化 PDF、失敗は保管庫状態・操作・ダイアログ等の不足 |
+| Chromium 全体 111 | 53 成功・58 失敗 | 旧成功済み 45 は全件成功。以前追加した UX suite は 7 成功・34 失敗で、今回の保管庫 1 成功・24 失敗と区別 |
+| 既存モデル 84・scroll 14 | 全件成功 | 同一ソースに対するローカル TAP。Node CI は新規パスワードの失敗後にこの step を実行しないため、CI で実行済みと書かない |
+| 統合契約 50・型検査・build | 全件成功 | 上記 CI の contracts job とローカル結果 |
+
+既存 227 ケースは成功、新規 126 は 4 成功・122 失敗。失敗を skip / todo / 期待失敗へ変えていない。4 件の成功は暗号化保管の実装成功を示さない。全 Chromium の失敗一覧が UX suite と新しい保管庫 suite だけに属し、以前成功していた 45 件に回帰がないことを確認した。
+
+ローカルに Chromium 実行ファイルがないため、構文・収集の確認と上記 CI の実画面試験を区別する。CI は本番 DOM / Chrome storage / native IDB / OPFS / PDF.js を使用し、picker・incognito・I/O 障害等の境界だけを制御する。ダウンロード・復元等の深い検査は、現在欠けている操作 UI を実装した後に到達する条件であり、今の失敗だけでその深い処理を実行済みとしない。
