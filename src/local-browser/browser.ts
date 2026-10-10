@@ -57,6 +57,7 @@ function applyActionVisibility() {
   const add = action("add"), roots = action("roots");
   add.hidden = !folderApi || !browserSettings.showAddFolderButton;
   roots.hidden = !folderApi || !browserSettings.showRegisteredFoldersButton;
+  document.querySelector<HTMLElement>(".browser-heading")!.hidden = add.hidden && roots.hidden;
   // A visibility-only update must not rebuild rows, end input or close a modal.
   if ((focused === add && add.hidden || focused === roots && roots.hidden) && pdf?.mode === "files") {
     if (session?.inputMode === "filter") filter.focus({ preventScroll: true });
@@ -155,7 +156,7 @@ function render() {
   if (session.selectedIndex >= 0) list.setAttribute("aria-activedescendant", `browser-row-${session.selectedIndex}`);
   else list.removeAttribute("aria-activedescendant");
   document.getElementById("browser-count")!.textContent = `${rows.length} items`;
-  document.getElementById("browser-state")!.textContent = `${session.view.toUpperCase()} ${session.location} ${session.selectedIndex + 1}/${rows.length}${session.filter ? ` /${session.filter}` : ""}`;
+  document.getElementById("browser-state")!.textContent = `${session.view.toUpperCase()} ${session.selectedIndex + 1}/${rows.length}${session.filter ? ` /${session.filter}` : ""}`;
   if (folderApi && session.inputMode === "filter" && document.activeElement !== filter && !document.querySelector("dialog[open]")) filter.focus({ preventScroll: true });
   else if (session.inputMode !== "filter" && document.activeElement === filter) focusFiles();
   if (folderApi && mode === "files" && !removeDialog.open) rows[session.selectedIndex]?.scrollIntoView({ block: "nearest", inline: "nearest" });
@@ -250,7 +251,7 @@ window.addEventListener("focus", () => {
 window.addEventListener("pagehide", () => { stopSettings?.(); pdf?.dispose(); storage?.close(); ready = false; }, { once: true });
 
 async function bootstrap() {
-  if (chrome.extension.inIncognitoContext || window.parent !== window) throw new Error("Open the local PDF browser in a regular top-level tab.");
+  if (chrome.extension.inIncognitoContext || window.parent !== window) throw new Error("Open the file browser in a regular top-level tab.");
   const settings = await loadSettings();
   browserSettings = settings;
   applyActionVisibility();

@@ -335,7 +335,7 @@ test('[FM-06/UI-02] API-unavailable file selection preserves existing registered
 test('[FM-01/EXT-01] Options launches working folder management and PDF keys with the Vimium-C connection disabled', async ({ extension }) => {
   await extension.seed(); await extension.configureLauncher(false, []); await extension.setupPage.reload();
   const before = await savedData(extension);
-  const [page] = await Promise.all([extension.context.waitForEvent('page'), extension.setupPage.getByRole('button', { name: 'Open local PDF browser', exact: true }).click()]);
+  const [page] = await Promise.all([extension.context.waitForEvent('page'), extension.setupPage.getByRole('button', { name: 'Open file browser', exact: true }).click()]);
   await expect(page).toHaveURL(extension.url('src/local-browser/browser.html'));
   await expect(screen(page)).toHaveAttribute('data-view', 'browse'); expect(await page.evaluate(() => window.__pickerCalls)).toEqual([]);
   await roots(page); await expect(unregister(row(page, 'University'))).toBeVisible();

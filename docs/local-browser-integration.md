@@ -136,7 +136,7 @@ VimDF 設定にローカルな「Vimium-C との接続」を追加する。保�
 # Vimium-C: Custom key mappings
 map <v-vimdf> sendToExtension id="ADDONID" raw data={"type":"vimdf.openLocalBrowser","version":1}
 # Vimium-C: Custom search engines
-vimdf: vimium://run/<v-vimdf> blank=vimium://run/<v-vimdf> VimDF local PDFs
+vimdf: vimium://run/<v-vimdf> blank=vimium://run/<v-vimdf> VimDF files
 ```
 
 `ADDONID` は VimDF の ID。VimDF 側の許可リストには Vimium-C の ID を入れる。`raw` は独自 envelope を付けず exact payload を送るため、`blank=` は query のない keyword の起動先を明示するために使う。使用版を記録し、実際の Vomnibar で `vimdf` → `Enter` が 1 回の送信になることを完了条件にする。ソース上の対応と実機動作を区別し、未確認の設定例を検証済みとして案内しない。

@@ -81,7 +81,7 @@ export function showLocalFilePanel(opts: LocalFilePanelOptions): void {
       ${name ? `<p class="lf-path" title="${escapeAttr(name)}">${escapeHtml(name)}</p>` : ""}
       <p class="lf-blurb">${blurb}</p>
       ${opts.reason === "no-document" ? `<div class="lf-grant">
-        <button type="button" id="lfBrowseFolders">Open local PDF browser</button>
+        <button type="button" id="lfBrowseFolders">Open file browser</button>
         <p class="lf-note">Browse your registered folders in a new tab.</p>
         <p id="lfLaunchError" role="alert" hidden></p>
       </div>` : ""}

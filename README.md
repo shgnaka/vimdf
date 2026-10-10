@@ -142,7 +142,7 @@ and the document keeps its marks, highlights and last page.
 
 ### Registered folders and Vimium C
 
-Click the VimDF toolbar icon, or **Open local PDF browser** in Options, to
+Click the VimDF toolbar icon, or **Open file browser** in Options, to
 open the folder browser. **Add folder** registers one folder at a time.
 Use `j` / `k` to select, `Enter` / `l` to open, `h` to move to the parent,
 and `/` to filter the current list by name. At a registered root, `h` opens

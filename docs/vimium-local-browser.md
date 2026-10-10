@@ -26,7 +26,7 @@ Vimium-C 設定例（`ADDONID` を VimDF の拡張 ID に置換）：
 # Custom key mappings
 map <v-vimdf> sendToExtension id="ADDONID" raw data={"type":"vimdf.openLocalBrowser","version":1}
 # Custom search engines
-vimdf: vimium://run/<v-vimdf> blank=vimium://run/<v-vimdf> VimDF local PDFs
+vimdf: vimium://run/<v-vimdf> blank=vimium://run/<v-vimdf> VimDF files
 ```
 
 設定は利用者が追加する。現設定例には必要機能の導入版から少なくとも Vimium-C 1.93.0 以降が必要。これは最低版の実機検証済みを意味しない。bare keyword の確定と ID の差し替えは実際の使用版で検証して確認版を記録し、動作しない場合は設定例を修正する。通常の Vimium には同じ設定例を適用しない。VimDF の toolbar action / 設定から専用画面を利用できる。

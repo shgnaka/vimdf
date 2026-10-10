@@ -70,7 +70,7 @@ test('[UI-06] discarded PDF history visibly asks for re-selection without fetchi
 test('[EXT-01/UI-02] an empty ordinary Viewer opens one regular folder-browser tab without a picker', async ({ extension }) => {
   const page = await extension.context.newPage(); const url = extension.url('src/viewer/viewer.html');
   await page.goto(url); await expect(page.locator('#localFilePanel')).toBeVisible();
-  const name = /browse.*folders?|open.*(?:folder|local PDF browser)|registered folders/i;
+  const name = 'Open file browser';
   const launch = page.getByRole('button', { name }).or(page.getByRole('link', { name }));
   await expect(launch).toHaveCount(1); await expect(launch).toBeVisible();
   const [browser] = await Promise.all([extension.context.waitForEvent('page'), launch.click()]);

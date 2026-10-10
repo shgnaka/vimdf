@@ -4,7 +4,7 @@ test.use({ actionTimeout: 5000 });
 
 const screen = page => page.getByTestId('local-browser');
 const input = page => page.getByTestId('browser-filter');
-const help = page => page.getByRole('dialog', { name: 'Local PDF browser keybindings', exact: true });
+const help = page => page.getByRole('dialog', { name: 'File browser keybindings', exact: true });
 const viewerHelp = page => page.getByRole('dialog', { name: 'PDF viewer keybindings', exact: true });
 const selected = page => page.locator('#files [role="option"][aria-selected="true"]');
 async function ready(page) { await expect(screen(page)).toHaveAttribute('data-busy', 'false'); }
@@ -33,6 +33,39 @@ async function tabTo(page, target) {
   }
   throw new Error('Control is unreachable using Tab');
 }
+
+test('[UX-16] files have no top-level title; actual folder location stays in the status line', async ({ extension }) => {
+  const page = await extension.openBrowser(); await ready(page);
+  await expect(page).toHaveTitle('File browser — VimDF');
+  await expect(page.locator('#files h1')).toHaveCount(0);
+  await expect(page.locator('#files')).not.toContainText(/Local PDFs|Local PDF browser/i);
+  await extension.seed(); await page.reload(); await ready(page);
+  const location = page.locator('#files .vimdf-statusline [data-testid="browser-location"]');
+  await expect(location).toHaveText('University');
+  await filter(page, 'course'); await page.keyboard.press('Enter'); await ready(page);
+  await expect(location).toContainText('course');
+  await page.keyboard.press('r'); await expect(screen(page)).toHaveAttribute('data-view', 'roots');
+  await expect(location).toHaveText('Registered folders');
+  await expect(page.locator('#files h1')).toHaveCount(0);
+  await page.keyboard.press('Escape'); await expect(location).toContainText('course');
+  await extension.setupPage.evaluate(() => chrome.storage.sync.set({ showAddFolderButton: false, showRegisteredFoldersButton: false }));
+  await expect(page.locator('.browser-heading')).toBeHidden(); await expect(location).toContainText('course');
+});
+
+test('[UX-16] File browser labels and help distinguish selection from the unchanged VimDF viewer help', async ({ extension }) => {
+  await extension.seed(); const options = extension.setupPage;
+  await expect(options.locator('#localBrowserSettings h2')).toHaveText('File browser');
+  await expect(options.locator('#launcherCommands')).toContainText('VimDF files');
+  const [page] = await Promise.all([extension.context.waitForEvent('page'), options.getByRole('button', { name: 'Open file browser', exact: true }).click()]);
+  await ready(page); await page.keyboard.press('?'); await expect(help(page)).toBeVisible();
+  await expect(help(page).getByRole('heading')).toHaveText('File browser keybindings');
+  await expect(help(page)).toContainText('Registered folders');
+  await expect(page.getByRole('dialog', { name: 'Local PDF browser keybindings', exact: true })).toHaveCount(0);
+  await page.keyboard.press('Escape'); await openLesson(page);
+  await page.keyboard.press('?'); await expect(viewerHelp(page)).toBeVisible();
+  await expect(viewerHelp(page).getByRole('heading')).toHaveText('VimDF — Keybindings');
+  await expect(help(page)).toBeHidden();
+});
 
 test('[UX-01] normal list removes branding/settings/hints and hides filter from Tab', async ({ extension }) => {
   await extension.seed(); const page = await extension.openBrowser(); await ready(page);

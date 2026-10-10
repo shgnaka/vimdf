@@ -6,7 +6,7 @@ export async function setupLauncherOptions(): Promise<void> {
   const commands = document.getElementById("launcherCommands")!;
   const ownId = document.getElementById("vimdfExtensionId") as HTMLInputElement;
   ownId.value = chrome.runtime.id;
-  commands.textContent = `map <v-vimdf> sendToExtension id="${ownId.value}" raw data={"type":"vimdf.openLocalBrowser","version":1}\nvimdf: vimium://run/<v-vimdf> blank=vimium://run/<v-vimdf> VimDF local PDFs`;
+  commands.textContent = `map <v-vimdf> sendToExtension id="${ownId.value}" raw data={"type":"vimdf.openLocalBrowser","version":1}\nvimdf: vimium://run/<v-vimdf> blank=vimium://run/<v-vimdf> VimDF files`;
   document.getElementById("copyLauncherCommands")!.onclick = () => {
     void navigator.clipboard.writeText(commands.textContent!).then(() => { status.textContent = "Commands copied."; }).catch(error => { status.textContent = String(error); });
   };

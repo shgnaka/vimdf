@@ -8,7 +8,11 @@
 
 設定は初期値・旧プロフィール・不正値、片方ずつ / 両方の非表示、Options からの保存と再読込、キー・ヘルプの維持、ライブ反映、Tab 除外、入力と modal のフォーカス、登録 / PDF データ / CSS の保持、既定への初期化、PDF 表示中の設定変更を検査する。既存テストを置き換えず Chromium 全体は 129 ケース。
 
-## 今回の実装検証
+## UX-16 の表示名称・見出し改訂
+
+一覧上部のタイトル見出しを削除し、現在位置は既存ステータス行へ移す。表示名は File browser、一覧ヘルプは File browser keybindings。Viewer の VimDF — Keybindings は維持する。tests/browser/local-browser-ui.spec.mjs に 2 ケースを追加し、未登録 / フォルダ内 / 登録一覧 / 取消の位置、空の操作枠の非表示、Options の節・起動・Vimium C 表示名、実 PDF 表示時の別ヘルプを検査する。Viewer の未開封起動ボタンは既存の受け入れテストでも新しい名前で検査する。Chromium 全体は 131、Node と合わせて 443 ケース。実行前に成功扱いにしない。
+
+## 文字サイズ・ボタン表示の実装検証
 
 `52ea9609fa85b96a5fb458761620e3e98a42b43a` の [Node・ビルド CI](https://github.com/shgnaka/vimdf/actions/runs/38062945465) と [Chromium・統合契約 CI](https://github.com/shgnaka/vimdf/actions/runs/38062945499) が全件成功。Node 312（フォルダ 111、パスワード 137、scroll 14、統合契約 50）と Chromium 129（既存 111、新規 UX-14 / 15 の 18）、合計 441 ケース成功。型検査・production build も成功し、skip / todo / 期待失敗なし。ログの対象コミット、件数、新規 18 ケースの成功を確認した。表示は本番 DOM の computed style、保存は実 storage / IndexedDB、PDF の位置は Page 2 / 2 として検査する。OS picker と権限の境界は従来どおり制御する。
 
@@ -47,7 +51,7 @@
 
 本番 DOM / PDF.js / IndexedDB / storage / handles を使用し、OS picker と許可・保存障害の境界だけを制御する。CSS の見た目の固定値は初期デザインの指定ではなく、利用者が保存するテスト CSS が computed style へ反映したかの検査。初期配色・配置は確定しない。
 
-追加する accessible / 検査識別子は、ヘルプ dialog 名 `Local PDF browser keybindings` / `PDF viewer keybindings`、絞り込み textbox 名 `Filter keybindings`、フォーカス可能な scroll 要素 `data-testid="help-scroll"`。一覧ヘルプのコマンド行には共通定義から `data-command` とキー要素 `data-key` を付け、画面で利用できる操作だけ表示する。Options の CSS 要素は `customCss` / `saveCustomCss` / `resetCustomCss` / `customCssStatus`。適用 style の識別子は `data-vimdf-custom-css`。これらは本番へ接続済みの識別子であり、テスト側で模倣 UI を生成しない。
+追加する accessible / 検査識別子は、ヘルプ dialog 名 `File browser keybindings` / `PDF viewer keybindings`、絞り込み textbox 名 `Filter keybindings`、フォーカス可能な scroll 要素 `data-testid="help-scroll"`。一覧ヘルプのコマンド行には共通定義から `data-command` とキー要素 `data-key` を付け、画面で利用できる操作だけ表示する。Options の CSS 要素は `customCss` / `saveCustomCss` / `resetCustomCss` / `customCssStatus`。適用 style の識別子は `data-vimdf-custom-css`。これらは本番へ接続済みの識別子であり、テスト側で模倣 UI を生成しない。
 
 OS picker の中での Tab / Enter、ブラウザの拡張アイコン右クリック → Options は native UI の代表実機確認を維持する。パスワードの暗号化・バックアップ・平文エクスポート・復元は UX-01〜13 と区別し、[保管庫の追加テスト](pdf-password-testing.md) で SEC-01〜24 を検査する。Node 103・Chromium 25 ケースを追加し、既存 34 件のパスワードテストやこの節の旧 CI 件数に加算しない。既存の UI テストと同じ Chromium glob で実行する。
 

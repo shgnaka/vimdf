@@ -11,7 +11,7 @@ const status = page => page.locator('#customCssStatus');
 // Playwright's rendered-text matcher excludes STYLE nodes. Check the actual
 // style textContent; computed-style assertions separately prove application.
 const style = page => page.locator('style[data-vimdf-custom-css]');
-const browserHelp = page => page.getByRole('dialog', { name: 'Local PDF browser keybindings', exact: true });
+const browserHelp = page => page.getByRole('dialog', { name: 'File browser keybindings', exact: true });
 const viewerHelp = page => page.getByRole('dialog', { name: 'PDF viewer keybindings', exact: true });
 const testCss = `.vimdf-ui { --vimdf-bg: #101112; --vimdf-fg: #e1e2e3; --vimdf-accent: #314159; }
 .vimdf-browser { --vimdf-selection-bg: #123456; --vimdf-selection-fg: #fedcba; --vimdf-status-bg: #223344; }

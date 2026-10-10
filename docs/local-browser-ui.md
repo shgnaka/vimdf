@@ -4,7 +4,9 @@
 
 ## 決定した表示方針
 
-Vim のバッファ一覧とステータス行を参考にする。等幅文字、コンパクトな行、明確な選択行を基本とし、現在位置・一覧の種類・選択中・プライマリーを区別する。上部の VimDF ロゴと一覧内の Settings ボタンをなくす。常設の検索ボックスとキーバインド説明も表示しない。ステータス行はモード・現在位置・選択位置・件数を表示できるが、通常時にキー案内を並べない。未登録・権限確認・エラーの状況説明と実行 / 取消操作は必要なときに表示する。
+Vim のバッファ一覧とステータス行を参考にする。等幅文字、コンパクトな行、明確な選択行を基本とし、現在位置・一覧の種類・選択中・プライマリーを区別する。上部の VimDF ロゴ、一覧内の Settings ボタン、画面タイトルの見出しをなくす。現在位置は上部へ重複表示せずステータス行に置く。常設の検索ボックスとキーバインド説明も表示しない。ステータス行はモード・現在位置・選択位置・件数を表示できるが、通常時にキー案内を並べない。未登録・権限確認・エラーの状況説明と実行 / 取消操作は必要なときに表示する。
+
+画面・設定節の名称は機能を示す File browser、起動ボタンは Open file browser。一覧ヘルプの見出しと accessible name は File browser keybindings とし、Viewer の既存 VimDF — Keybindings と区別する。タブタイトルは File browser — VimDF。Local PDFs / Local PDF browser を画面名として使わない。Vimium C 用の表示説明は VimDF files。内部の URL、DOM ID、保存キー、外部起動メッセージ vimdf.openLocalBrowser は互換性のため維持する。
 
 Registered folders と Add folder はキー操作と同じ機能を持つ小さな文字ボタンとして初期状態で表示し、共通 Options から個別に非表示にできる。マウス利用と Tab によるフォーカスを維持し、大きなツールバーにしない。登録解除や再許可の既存ボタンも維持する。[デザイン案](local-browser-design.md) に単一一覧、文字サイズ、余白、初期配色、全画面・例外状態の見本を具体化した。見本全体の利用者確認は未完了。以下の文字サイズ統一とボタン表示設定は利用者の指定に基づく実装要件である。
 
@@ -14,7 +16,7 @@ Registered folders と Add folder はキー操作と同じ機能を持つ小さ�
 
 ターミナルらしさは文字サイズを統一することで表現する。一覧の標準は 13 px の system monospace。ファイル / 登録名、現在位置の見出し、Type / Default / 同名識別 ID、状態・件数、入力・入力モード、ボタン、説明・エラー・競合通知、登録解除確認、一覧ヘルプの見出し・キー・説明・検索入力を同じサイズにする。狭い幅や Dark / Light / Auto でも文字サイズを変えない。重要度は色・太さ・余白・枠で表し、見出しやエラーだけを拡大しない。追加 Web フォントは使わない。Custom CSS で .vimdf-browser の基準サイズを変えた場合も各部分が継承する。既存 Viewer の文字サイズ・ステータス行の設定と Options の外観は維持する。
 
-Options の Local PDF browser 節に Folder buttons を置き、Show Registered folders button と Show Add folder button を独立したチェック項目にする。保存キーは showRegisteredFoldersButton / showAddFolderButton、boolean、初期値はともに true。未保存の旧プロフィール、boolean 以外の不正値も表示として読み込む。既存の一般設定と同じ chrome.storage.sync に即時保存し、成功した変更を開いている一覧へ反映、再起動時に復元する。Reset to defaults は両方を表示へ戻す。Custom CSS、登録 handle、PDF データ、保管庫の保存先・初期化対象は変えない。
+Options の File browser 節に Folder buttons を置き、Show Registered folders button と Show Add folder button を独立したチェック項目にする。保存キーは showRegisteredFoldersButton / showAddFolderButton、boolean、初期値はともに true。未保存の旧プロフィール、boolean 以外の不正値も表示として読み込む。既存の一般設定と同じ chrome.storage.sync に即時保存し、成功した変更を開いている一覧へ反映、再起動時に復元する。Reset to defaults は両方を表示へ戻す。Custom CSS、登録 handle、PDF データ、保管庫の保存先・初期化対象は変えない。
 
 非表示にしたボタンは Tab の対象外にする。r / a / ?、ヘルプ内の操作説明、個別登録解除・再許可・再読込は維持する。フォルダ API 非対応時は設定が true でもフォルダ用ボタンを隠す。表示設定で権限要求・picker・登録変更を起こさず、処理中や保存競合の操作禁止を解除しない。設定変更は位置・選択・絞り込み・入力・開いているダイアログ・PDF ページを維持する。フォーカス中のボタンが隠れた場合だけ一覧へ戻し、入力中なら入力欄を優先する。設定変更のために行を再生成しない。
 
@@ -151,12 +153,13 @@ CSS は chrome.storage.local の独立したキー vimdf.customCss.v1 に {versi
 | UX-13 | 既存ボタンと追加キーの同値性、登録解除の Tab / Enter / Esc、API 非対応・DB 復元失敗時にフォルダ操作しないことを検査 |
 | UX-14 | 一覧の全表示文字・入力・ヘルプ・解除確認が基準の 13 px 等幅。テーマ・狭い幅・説明 / エラー / 非対応状態・同名 ID と CSS による基準サイズ変更を検査し、Viewer / Options の外観を維持 |
 | UX-15 | 両ボタンの初期表示、旧設定の復元、独立した Options 保存・再読込・ライブ反映・既定への初期化を検査。非表示時も r / a / ? が有効で Tab は除外。位置・入力・modal / PDF のフォーカスと登録・PDF データ・CSS を保持 |
+| UX-16 | 一覧上部にタイトル見出しがなく、現在位置はステータス行に残り、子フォルダ・登録一覧・取消で更新される。両操作を隠した場合は空の見出し枠も隠す。File browser のタブ・設定・起動・一覧ヘルプの名称を揃え、Viewer の VimDF — Keybindings を維持 |
 
 モデルで r / a の状態遷移と取消を検査し、本番の拡張画面を動かす Chromium テストでフォーカス、排他表示、キー配送、computed style、保存後の反映を検査する。見た目の色やピクセル位置を固定値で決めつけず、公開変数への変更結果と操作の契約を調べる。OS picker のキーボード操作とブラウザ側のオプション導線は代表環境で確認する。
 
 ## 実装
 
-r、全 4 状態の a、取消時の位置復帰、一覧 / Viewer 別の native modal help、一時入力、共通 Options の CSS 編集・local 保存・ライブ反映を接続した。追加は picker を呼ぶ直前に登録一覧へ切り替えず、成功後だけ切り替える。読取権限のない追加 handle は、既存登録がある場合に登録一覧へ残し、選択後の明示許可へ進む。初回の denied handle は既定として保存しない。等幅のコンパクトな一覧とステータス行を実装した。UX-14 / 15 では一覧だけに文字サイズ継承を適用し、Options の既存 Local PDF browser 節に表示チェックを追加。同期設定の変更はボタンの hidden と必要なフォーカス復帰だけを更新する。
+r、全 4 状態の a、取消時の位置復帰、一覧 / Viewer 別の native modal help、一時入力、共通 Options の CSS 編集・local 保存・ライブ反映を接続した。追加は picker を呼ぶ直前に登録一覧へ切り替えず、成功後だけ切り替える。読取権限のない追加 handle は、既存登録がある場合に登録一覧へ残し、選択後の明示許可へ進む。初回の denied handle は既定として保存しない。等幅のコンパクトな一覧とステータス行を実装した。UX-14 / 15 では一覧だけに文字サイズ継承を適用し、Options の既存 File browser 節に表示チェックを追加。同期設定の変更はボタンの hidden と必要なフォーカス復帰だけを更新する。
 
 ## 参照
 

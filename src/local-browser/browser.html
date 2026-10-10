@@ -3,14 +3,14 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>Local PDFs — VimDF</title>
+  <title>File browser — VimDF</title>
   <link rel="stylesheet" href="./browser.css" />
 </head>
 <body>
 <main hidden data-testid="local-browser" data-mode="files" data-view="empty" data-busy="true" tabindex="-1">
-  <section class="vimdf-ui vimdf-browser" id="files" aria-label="Local PDF browser">
+  <section class="vimdf-ui vimdf-browser" id="files" aria-label="File browser">
     <div class="browser-workspace">
-      <div class="browser-heading"><div><h1 data-testid="browser-location">Local PDFs</h1></div><div class="browser-actions"><button data-action="roots" type="button">Registered folders</button><button data-action="add" type="button" disabled>Add folder</button></div></div>
+      <div class="browser-heading"><div class="browser-actions"><button data-action="roots" type="button">Registered folders</button><button data-action="add" type="button" disabled>Add folder</button></div></div>
       <p data-testid="registry-stale" hidden>Registered folders changed in another tab. <button data-action="reload-registry" type="button">Reload folders</button></p>
       <p id="browser-error" role="alert" hidden></p>
       <button data-action="retry" type="button" hidden>Retry</button>
@@ -28,9 +28,9 @@
       <button data-action="cancel-remove" type="button">Keep folder</button>
       <button data-action="confirm-remove" type="button">Unregister folder</button>
     </dialog>
-    <footer class="browser-footer vimdf-statusline"><span id="browser-state"></span><span id="browser-count"></span></footer>
-    <dialog id="browser-help" class="vimdf-ui vimdf-browser vimdf-help" aria-label="Local PDF browser keybindings" hidden>
-      <div class="help-inner"><h2>Local PDF browser keybindings</h2><div class="help-search" hidden><input aria-label="Filter keybindings" autocomplete="off" /></div><table></table><p>? / Esc closes help.</p></div>
+    <footer class="browser-footer vimdf-statusline"><span id="browser-state"></span><span data-testid="browser-location"></span><span id="browser-count"></span></footer>
+    <dialog id="browser-help" class="vimdf-ui vimdf-browser vimdf-help" aria-label="File browser keybindings" hidden>
+      <div class="help-inner"><h2>File browser keybindings</h2><div class="help-search" hidden><input aria-label="Filter keybindings" autocomplete="off" /></div><table></table><p>? / Esc closes help.</p></div>
     </dialog>
   </section>
   <section class="vimdf-ui vimdf-viewer" id="pdf-surface" hidden aria-label="PDF viewer">
