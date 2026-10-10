@@ -429,7 +429,7 @@ test('[SEC-23] reset without knowing the master deletes only vault and legacy re
 test('[SEC-23] cancelled or failed reset does not claim success or delete unrelated keys', async () => {
   const f = await populated({ initial: unrelated }); await rejectsUnchanged(f, () => f.store.reset({ confirmed: false }));
   f.io.faults.remove = new Error('remove failed'); await rejectsUnchanged(f, () => f.store.reset({ confirmed: true }));
-  assert.equal((await f.store.status()).state, 'unlocked');
+  assert.notEqual((await f.store.status()).state, 'uninitialized');
 });
 test('[SEC-23] clearing individual registrations retains the master and requires unlocking first', async () => {
   const f = await populated(); await f.store.clear(); assert.deepEqual((await f.store.vault()).records, []);

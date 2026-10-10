@@ -8,11 +8,11 @@
 | --- | --- | --- |
 | `tests/password-vault.test.mjs` | 95 | 暗号・保存・解錠・バックアップ・復元・再認証・移行・取消・競合。うち 2 件は独立した Web Crypto oracle の検査 |
 | `tests/password-vault-pdfjs.test.mjs` | 6 | 実 RC4-128 / AES-256 PDF の復号、ロック中の手入力、非暗号化 PDF、保存失敗 |
-| `tests/browser/password-vault.spec.mjs` | 24 | 本番 Options と一覧・Viewer、実ダウンロード・復元・移行、DOM・入力・フォーカス、native IDB / OPFS の保持 |
+| `tests/browser/password-vault.spec.mjs` | 25 | 本番 Options と一覧・Viewer、実ダウンロード・復元・移行、DOM・入力・フォーカス、解錠取消後の PDF 手入力、native IDB / OPFS の保持 |
 
 `tests/helpers/password-vault-fixtures.mjs` は storage / 排他制御 / 時計 / Web Crypto 境界の観測だけを提供する。暗号化 fixture と復号 oracle は Web Crypto を直接呼び、本番の暗号ヘルパーを使わない。fixture のパスワードや PDF は合成データで、利用者の秘密を使わない。
 
-Node.js 24 以上と既存依存関係を使う。`npm run test:password` の既存 glob は Node 101 ケースと旧 34 ケースを自動収集する。`npm run test:local-browser:browser` の既存 glob は Chromium 24 ケースを追加収集する。CI の失敗条件は変更しない。
+Node.js 24 以上と既存依存関係を使う。`npm run test:password` の既存 glob は Node 101 ケースと旧 34 ケースを自動収集する。`npm run test:local-browser:browser` の既存 glob は Chromium 25 ケースを追加収集する。CI の失敗条件は変更しない。
 
 ```sh
 node --test --test-reporter=tap tests/password-vault*.test.mjs
@@ -117,4 +117,4 @@ PDF の手入力 dialog に `Unlock vault` を用意し、解錠成功後は実�
 
 ローカルで Node の既存 34 ケースは成功。新規 101 ケースは独立 oracle 2 件と実非暗号化 PDF 1 件が成功し、残りは未実装の暗号化 store / policy / factory を検出する。本番ソースは変更していない。既存モデル 84・scroll 14・統合契約 50、型検査と production build も成功。
 
-Chromium は全 110 ケース（既存 86 + 新規 24）の構文・収集を確認した。実行結果は CI 確認後に追記する。ローカルに Chromium 実行ファイルがないため、収集成功を画面試験成功として数えない。
+Chromium は全 111 ケース（既存 86 + 新規 25）の構文・収集を確認した。実行結果は CI 確認後に追記する。ローカルに Chromium 実行ファイルがないため、収集成功を画面試験成功として数えない。

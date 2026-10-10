@@ -156,6 +156,15 @@ test('[SEC-08] encrypted PDF can still be opened manually without saving while t
   await expect(page.locator('#viewer .page')).toHaveCount(1); expect((await allData(extension)).local[v2]).toEqual(cipher);
   await extension.setupPage.reload(); await expect(section(extension.setupPage)).toHaveAttribute('data-vault-state', 'locked');
 });
+test('[SEC-08/SEC-09] cancelling master unlock returns to the PDF password input and manual opening still works', async ({ extension }) => {
+  const encrypted = await extension.seed(); const cipher = await seedVault(extension); const page = await extension.openBrowser();
+  await filter(page, 'locked'); await page.keyboard.press('Enter'); const pdfDialog = modal(page, 'PDF password');
+  await pdfDialog.getByRole('button', { name: 'Unlock vault', exact: true }).click();
+  const dialog = modal(page, 'Unlock password vault'); await masterInput(dialog).fill(master); await page.keyboard.press('Escape');
+  await expect(dialog).toBeHidden(); await expect(pdfDialog).toBeVisible(); await expect(pdfDialog.locator('[name="password"]')).toBeFocused();
+  await pdfDialog.locator('[name="password"]').fill(encrypted.password); await page.keyboard.press('Enter');
+  await expect(page.locator('#viewer .page')).toHaveCount(1); expect((await allData(extension)).local[v2]).toEqual(cipher);
+});
 
 test('[SEC-10/SEC-12] locked backup downloads real ciphertext and releases the temporary object URL', async ({ extension }) => {
   const cipher = await seedVault(extension); const page = extension.setupPage; const before = await allData(extension); await observeOutput(page);
