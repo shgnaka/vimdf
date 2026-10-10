@@ -228,3 +228,14 @@ button.clear {
 .password-record { border: 1px solid var(--border); border-radius: 8px; padding: 14px; }
 .password-form label { display: block; }
 .password-form input[type="password"], .password-record input { max-width: 100%; }
+
+#localBrowserSettings textarea { min-width: 240px; max-width: 100%; font: 12px monospace; }
+#launcherCommands { overflow-x: auto; white-space: pre-wrap; overflow-wrap: anywhere; padding: 16px; border: 1px solid #8885; border-radius: 6px; font-size: 12px; }
+
+#customCss { width: 100%; display: block; font: 13px Consolas, monospace; margin: 12px 0; }
+.password-vault-actions { display: flex; flex-wrap: wrap; gap: 8px; margin: 12px 0; }
+.password-dialog { max-width: min(520px, 92vw); color: var(--fg, #ddd); background: var(--bg, #222); border: 1px solid #666; padding: 24px; }
+.password-dialog::backdrop { background: #0009; }
+.password-dialog label { display: block; margin: 12px 0; }
+.password-dialog input { margin: 4px; }
+.password-dialog .password-actions { display: flex; gap: 12px; justify-content: flex-end; }

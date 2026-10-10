@@ -75,8 +75,8 @@ body {
   left: 0;
   right: 0;
   min-height: 24px;
-  background: var(--statusbar-bg, var(--bar-bg));
-  color: var(--statusbar-fg, var(--bar-fg));
+  background: var(--vimdf-status-bg, var(--statusbar-bg, var(--bar-bg)));
+  color: var(--vimdf-status-fg, var(--statusbar-fg, var(--bar-fg)));
   display: flex;
   justify-content: space-between;
   align-items: center;
@@ -866,3 +866,24 @@ body.vimdf-dragging::after {
 .password-dialog fieldset { margin: 12px 0; }
 .password-actions { display: flex; justify-content: flex-end; gap: 12px; }
 .password-dialog button { padding: 8px 14px; }
+
+/* Stable customization surface. Legacy setting variables remain defaults. */
+.vimdf-ui {
+  --vimdf-bg: var(--bg); --vimdf-fg: var(--fg); --vimdf-muted-fg: var(--bar-fg);
+  --vimdf-accent: var(--vim-accent); --vimdf-focus: var(--accent);
+  --vimdf-selection-bg: var(--bar-bg); --vimdf-selection-fg: var(--fg);
+  --vimdf-status-bg: var(--statusbar-bg, var(--bar-bg));
+  --vimdf-status-fg: var(--statusbar-fg, var(--bar-fg));
+  color: var(--vimdf-fg); background: var(--vimdf-bg);
+}
+.vimdf-help { margin: auto; padding: 0; border: 1px solid var(--page-border); max-width: min(760px, 95vw); width: 95vw; max-height: 90vh; }
+.vimdf-help::backdrop { background: #0009; }
+.vimdf-help .help-inner { padding: 24px; overflow: auto; max-height: 80vh; outline: none; }
+.vimdf-help table { width: 100%; border-collapse: collapse; }
+.vimdf-help td { padding: 9px 12px; }
+.vimdf-help td:first-child { color: var(--vimdf-accent); white-space: nowrap; }
+.vimdf-help input { background: var(--vimdf-bg); color: var(--vimdf-fg); }
+.vimdf-help [hidden] { display: none !important; }
+#help { position: fixed; inset: auto; display: block; background: var(--vimdf-bg); color: var(--vimdf-fg); }
+#help .help-inner { background: transparent; border: none; min-width: 0; }
+.vimdf-ui :focus-visible { outline-color: var(--vimdf-focus); }

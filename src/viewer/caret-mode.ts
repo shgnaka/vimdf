@@ -163,7 +163,7 @@ export class CaretMode {
     this.caret = this.findStartCaret();
     if (!this.caret) {
       this.viewer.setStatusCenter("no text on this page");
-      setTimeout(() => this.viewer.clearStatusCenter(), 1000);
+      this.viewer.clearStatusLater(1000);
       return;
     }
     this.kind = "insert";
@@ -225,7 +225,7 @@ export class CaretMode {
 
   private flash(msg: string, ms = 1200): void {
     this.viewer.setStatusCenter(msg);
-    setTimeout(() => this.viewer.clearStatusCenter(), ms);
+    this.viewer.clearStatusLater(ms);
   }
 
   private enterVisual(kind: "visual" | "visual-line" | "visual-block"): void {
@@ -1563,14 +1563,14 @@ export class CaretMode {
       r.pad === "after" ? `${base} ` : r.pad === "before" ? ` ${base}` : base;
     if (!text) {
       this.viewer.setStatusCenter("empty selection");
-      setTimeout(() => this.viewer.clearStatusCenter(), 1000);
+      this.viewer.clearStatusLater(1000);
       return "empty";
     }
     const ok = await copyText(text);
     this.viewer.setStatusCenter(
       ok ? `yanked ${text.length} chars` : "yank failed (clipboard blocked)",
     );
-    setTimeout(() => this.viewer.clearStatusCenter(), 1200);
+    this.viewer.clearStatusLater(1200);
     return ok ? "copied" : "failed";
   }
 

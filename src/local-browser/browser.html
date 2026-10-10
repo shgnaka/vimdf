@@ -1,0 +1,177 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>File browser — VimDF</title>
+  <link rel="stylesheet" href="./browser.css" />
+</head>
+<body>
+<main hidden data-testid="local-browser" data-mode="files" data-view="empty" data-busy="true" tabindex="-1">
+  <section class="vimdf-ui vimdf-browser" id="files" aria-label="File browser">
+    <div class="browser-workspace">
+      <div class="browser-heading"><div class="browser-actions"><button data-action="roots" type="button">Registered folders</button><button data-action="add" type="button" disabled>Add folder</button></div></div>
+      <p data-testid="registry-stale" hidden>Registered folders changed in another tab. <button data-action="reload-registry" type="button">Reload folders</button></p>
+      <p id="browser-error" role="alert" hidden></p>
+      <button data-action="retry" type="button" hidden>Retry</button>
+      <p id="browser-message" aria-live="polite">Loading saved folders…</p>
+      <button data-action="authorize" type="button" hidden>Allow read access</button>
+      <label class="browser-search vimdf-commandline" hidden><span aria-hidden="true">/</span><input data-testid="browser-filter" aria-label="Filter file or folder names" aria-controls="browser-list" placeholder="Press / to filter names" autocomplete="off" spellcheck="false" readonly /><span id="filter-mode">NAMES</span></label>
+      <div class="list-labels" aria-hidden="true"><span>Name</span></div>
+      <div id="browser-list" role="listbox" aria-label="Files and folders" tabindex="0"></div>
+      <div id="browser-fallback" hidden><p>Folder browsing is unavailable in this browser. Open a PDF file instead.</p><button data-action="pick-file" type="button">Open PDF file</button><input id="fallback-file" type="file" accept="application/pdf,.pdf" hidden /></div>
+    </div>
+    <dialog id="remove-root-dialog" aria-labelledby="remove-root-title">
+      <h2 id="remove-root-title">Unregister folder?</h2><p id="remove-root-description"></p>
+      <p id="remove-root-outcome"></p>
+      <p>Your files and saved PDF marks are kept.</p>
+      <button data-action="cancel-remove" type="button">Keep folder</button>
+      <button data-action="confirm-remove" type="button">Unregister folder</button>
+    </dialog>
+    <footer class="browser-footer vimdf-statusline"><span id="browser-state"></span><span data-testid="browser-location"></span><span id="browser-count"></span></footer>
+    <dialog id="browser-help" class="vimdf-ui vimdf-browser vimdf-help" aria-label="File browser keybindings" hidden>
+      <div class="help-inner"><h2>File browser keybindings</h2><div class="help-search" hidden><input aria-label="Filter keybindings" autocomplete="off" /></div><table></table><p>? / Esc closes help.</p></div>
+    </dialog>
+  </section>
+  <section class="vimdf-ui vimdf-viewer" id="pdf-surface" hidden aria-label="PDF viewer">
+    <button data-action="back" type="button" class="pdf-back">← Files <kbd>H</kbd></button>
+    <div id="viewerContainer" tabindex="0">
+      <div id="viewer" class="pdfViewer"></div>
+    </div>
+
+    <aside id="sidebar" hidden>
+      <header>Outline</header>
+      <div id="outlineTree"></div>
+    </aside>
+
+    <footer id="statusbar" class="vimdf-statusline">
+      <span id="statusLeft"></span>
+      <span id="modeIndicator"></span>
+      <span id="statusCenter"></span>
+      <span id="statusRight"></span>
+    </footer>
+
+    <div id="searchbar" class="vimdf-commandline" hidden>
+      <span id="searchPrompt">/</span>
+      <input
+        type="text"
+        id="searchInput"
+        autocomplete="off"
+        spellcheck="false"
+      />
+      <span id="searchStatus"></span>
+    </div>
+
+    <dialog id="help" class="vimdf-ui vimdf-viewer vimdf-help" aria-label="PDF viewer keybindings" hidden>
+      <div class="help-inner">
+        <h2>VimDF — Keybindings</h2>
+        <div id="helpSearch" hidden>
+          <span class="help-search-prompt">/</span>
+          <input
+            type="text"
+            id="helpSearchInput"
+            autocomplete="off"
+            spellcheck="false"
+            placeholder="filter bindings…"
+          />
+          <span id="helpSearchStatus"></span>
+        </div>
+        <table>
+          <tr><th colspan="2">Navigation</th></tr>
+          <tr><td>j / k</td><td>Scroll down / up</td></tr>
+          <tr><td>h / l</td><td>Scroll left / right</td></tr>
+          <tr><td>Ctrl-d / Ctrl-u</td><td>Half page down / up</td></tr>
+          <tr><td>Ctrl-f / Ctrl-b</td><td>Full page down / up</td></tr>
+          <tr><td>gg / G</td><td>First / last page</td></tr>
+          <tr><td>{n}G</td><td>Go to page n</td></tr>
+
+          <tr><th colspan="2">Tabs</th></tr>
+          <tr><td>J / K</td><td>Previous / next tab</td></tr>
+          <tr><td>H / L</td><td>Back / forward in history</td></tr>
+          <tr><td>g0 / g$</td><td>First / last tab</td></tr>
+          <tr><td>t</td><td>New tab</td></tr>
+          <tr><td>x</td><td>Close current tab</td></tr>
+
+          <tr><th colspan="2">Search</th></tr>
+          <tr><td>/</td><td>Search</td></tr>
+          <tr><td>n / N</td><td>Next / previous match</td></tr>
+          <tr><td>Esc</td><td>Close search</td></tr>
+
+          <tr><th colspan="2">Marks</th></tr>
+          <tr><td>m{a-z}</td><td>Set mark</td></tr>
+          <tr><td>'{a-z}</td><td>Jump to mark</td></tr>
+
+          <tr><th colspan="2">Link hints</th></tr>
+          <tr><td>f</td><td>Follow link (show hints)</td></tr>
+          <tr><td>F</td><td>Follow link in new tab</td></tr>
+          <tr><td>Ctrl-O</td><td>Jump back</td></tr>
+          <tr><td>Ctrl-I / Tab</td><td>Jump forward</td></tr>
+
+          <tr><th colspan="2">View</th></tr>
+          <tr><td>+ / = / -</td><td>Zoom in / out</td></tr>
+          <tr><td>0</td><td>Fit width</td></tr>
+          <tr><td>o</td><td>Toggle outline (focuses the current section; Options can make it refocus instead of close)</td></tr>
+          <tr><td>j/k or &#8595;/&#8593;, Enter (in outline)</td><td>Move selection, jump to section</td></tr>
+          <tr><td>Ctrl-d/u/f/b, gg/G (in outline)</td><td>Half / full page, first / last section</td></tr>
+          <tr><td>h/l or &#8592;/&#8594; (in outline)</td><td>Collapse / expand section; h on a leaf jumps to its parent</td></tr>
+          <tr><td>za / zo / zc (in outline)</td><td>Toggle / open / close section (za/zc from inside act on the enclosing section)</td></tr>
+          <tr><td>zA / zO / zC (in outline)</td><td>Toggle / open / close section recursively</td></tr>
+          <tr><td>zm / zr (in outline)</td><td>Fold more / fold less (one level at a time)</td></tr>
+          <tr><td>zM / zR (in outline)</td><td>Close all / open all sections</td></tr>
+          <tr><td>Esc / Ctrl-h (in outline)</td><td>Release outline focus (sidebar stays open)</td></tr>
+          <tr><td>T</td><td>Open finder (sections, marks, highlights, full text)</td></tr>
+          <tr><td>Ctrl-S / Cmd-S</td><td>Download PDF</td></tr>
+          <tr><td>Ctrl-P / Cmd-P</td><td>Print</td></tr>
+          <tr><td>?</td><td>Toggle this help</td></tr>
+
+          <tr><th colspan="2">Help (this panel)</th></tr>
+          <tr><td>j / k</td><td>Scroll help down / up</td></tr>
+          <tr><td>Ctrl-d / Ctrl-u</td><td>Half page down / up</td></tr>
+          <tr><td>gg / G</td><td>Top / bottom</td></tr>
+          <tr><td>/</td><td>Filter bindings</td></tr>
+
+          <tr><th colspan="2">Finder</th></tr>
+          <tr><td>Ctrl-j / Ctrl-k</td><td>Next / previous result</td></tr>
+          <tr><td>Ctrl-d / Ctrl-u</td><td>Jump 8 rows</td></tr>
+          <tr><td>Enter</td><td>Jump to result</td></tr>
+          <tr><td>Esc</td><td>Close finder</td></tr>
+
+          <tr><th colspan="2">Caret mode</th></tr>
+          <tr><td>i</td><td>Enter CARET mode (caret on text layer)</td></tr>
+          <tr><td>h / l</td><td>Prev / next character</td></tr>
+          <tr><td>w / b</td><td>Next / prev word start</td></tr>
+          <tr><td>e</td><td>Next word end</td></tr>
+          <tr><td>W / B / E</td><td>Same, punctuation included (WORD)</td></tr>
+          <tr><td>j / k</td><td>Next / prev line (column-aware)</td></tr>
+          <tr><td>Ctrl-l / Ctrl-h</td><td>Jump right / left column</td></tr>
+          <tr><td>0 / ^ / $</td><td>Line start / start / end</td></tr>
+          <tr><td>gg / G</td><td>First / last page (caret)</td></tr>
+          <tr><td>{n}G</td><td>Go to page n (caret)</td></tr>
+          <tr><td>zz / zt / zb</td><td>Scroll caret to center / top / bottom</td></tr>
+          <tr><td>Ctrl-O / Ctrl-I / Tab</td><td>Jump back / forward (insert)</td></tr>
+          <tr><td>v</td><td>Toggle VISUAL (char-wise)</td></tr>
+          <tr><td>V</td><td>Toggle VISUAL LINE</td></tr>
+          <tr><td>Ctrl-V / Ctrl-Q</td><td>Toggle VISUAL BLOCK</td></tr>
+          <tr><td>y</td><td>Yank selection to clipboard</td></tr>
+          <tr><td>y{motion}</td><td>Yank over a motion (yw ye yb y0 y$ yj yk)</td></tr>
+          <tr><td>yiw / yaw</td><td>Yank inner / a word</td></tr>
+          <tr><td>yiW / yaW</td><td>Yank inner / a WORD (punctuation included)</td></tr>
+          <tr><td>yy / {n}yy</td><td>Yank whole row(s)</td></tr>
+          <tr><td>Y</td><td>Yank to end of row (= y$)</td></tr>
+          <tr><td>{n}y{motion}</td><td>Counts multiply (2y3w = six words)</td></tr>
+          <tr><td>viw / vaw</td><td>Select inner / a word (replaces selection)</td></tr>
+          <tr><td>H</td><td>Save selection as highlight</td></tr>
+          <tr><td>H{motion} / Hiw / HH</td><td>Highlight over a motion or object</td></tr>
+          <tr><td>Esc</td><td>Cancel a pending command, else back to normal</td></tr>
+          <tr><td>right-click</td><td>Remove a highlight</td></tr>
+        </table>
+        <p class="hint">Press ? or Esc to close.</p>
+      </div>
+    </dialog>
+
+  </section>
+  <div id="pdf-loading" hidden role="status">Opening PDF… <button data-action="cancel-pdf" type="button">Cancel loading</button></div>
+</main>
+<script type="module" src="./browser.ts"></script>
+</body>
+</html>
