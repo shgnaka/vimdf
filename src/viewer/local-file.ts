@@ -18,6 +18,7 @@
  */
 
 import { openExtensionsPage } from "./mime-handler";
+import { openLocalBrowser } from "../background/local-browser-launcher";
 
 export type LocalFileReason =
   /** A file:// PDF we were asked to open, without file-scheme access. */
@@ -79,6 +80,11 @@ export function showLocalFilePanel(opts: LocalFilePanelOptions): void {
       <h1>${heading}</h1>
       ${name ? `<p class="lf-path" title="${escapeAttr(name)}">${escapeHtml(name)}</p>` : ""}
       <p class="lf-blurb">${blurb}</p>
+      ${opts.reason === "no-document" ? `<div class="lf-grant">
+        <button type="button" id="lfBrowseFolders">Open local PDF browser</button>
+        <p class="lf-note">Browse your registered folders in a new tab.</p>
+        <p id="lfLaunchError" role="alert" hidden></p>
+      </div>` : ""}
       ${
         opts.reason === "no-access"
           ? `<div class="lf-grant">
@@ -103,6 +109,17 @@ export function showLocalFilePanel(opts: LocalFilePanelOptions): void {
 
   root.querySelector("#lfGrant")?.addEventListener("click", () => {
     openExtensionsPage();
+  });
+  const browse = root.querySelector<HTMLButtonElement>("#lfBrowseFolders");
+  browse?.addEventListener("click", () => {
+    if (browse.disabled) return;
+    browse.disabled = true;
+    const launchError = root.querySelector<HTMLElement>("#lfLaunchError")!;
+    launchError.hidden = true;
+    void openLocalBrowser(chrome, chrome.windows.getCurrent()).catch(reason => {
+      launchError.textContent = String(reason instanceof Error ? reason.message : reason);
+      launchError.hidden = false;
+    }).finally(() => { browse.disabled = false; });
   });
 
   const input = root.querySelector("#lfInput") as HTMLInputElement;

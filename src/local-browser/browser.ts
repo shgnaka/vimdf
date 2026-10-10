@@ -20,16 +20,28 @@ let stale = false;
 let checking = false;
 let composing = false;
 let removingId: string | null = null;
+let historyNotice = "";
 const removeDialog = document.getElementById("remove-root-dialog") as HTMLDialogElement;
 let pdf: ReturnType<typeof createLocalPdfController> | null = null;
 const folderApi = typeof (window as PickerWindow).showDirectoryPicker === "function";
 
 function showError(reason: unknown) {
-  if ((reason as { name?: string })?.name === "AbortError") return;
   if ((reason as { code?: string })?.code === "storage-conflict") announceStale();
   root.hidden = false;
   error.textContent = String(reason instanceof Error ? reason.message : reason);
   error.hidden = false;
+}
+function focusFiles() {
+  (folderApi ? list : root).focus({ preventScroll: true });
+}
+async function openPdf(file: File, identity: string) {
+  historyNotice = "";
+  try { await pdf!.openPdf(file, identity); }
+  catch (reason) {
+    // PDF/password cancellation belongs to this operation. Registry save
+    // aborts must still reach showError; FolderRegistry handles picker cancellation.
+    if ((reason as { name?: string })?.name !== "AbortError") throw reason;
+  }
 }
 function announceStale() { stale = true; document.querySelector<HTMLElement>('[data-testid="registry-stale"]')!.hidden = false; render(); }
 function render() {
@@ -43,23 +55,28 @@ function render() {
   action("retry").hidden = error.hidden;
   action("retry").disabled = checking || !!session?.busy;
   action("add").disabled = !ready || !folderApi || stale || !!session?.busy || checking;
-  action("roots").disabled = !ready || !!session?.busy || checking;
+  action("add").hidden = !folderApi;
+  action("roots").hidden = !folderApi;
+  action("roots").disabled = !ready || !folderApi || !!session?.busy || checking;
   action("back").disabled = mode !== "pdf";
-  action("authorize").hidden = session?.view !== "permission";
-  action("authorize").disabled = !ready || stale || !!session?.busy;
+  action("authorize").hidden = !folderApi || session?.view !== "permission";
+  action("authorize").disabled = !ready || !folderApi || stale || !!session?.busy;
+  for (const element of document.querySelectorAll<HTMLElement>(".browser-search, .list-labels, #browser-list, .browser-footer")) element.hidden = !folderApi;
+  message.hidden = !folderApi && !historyNotice;
   document.getElementById("browser-fallback")!.hidden = folderApi && !(pdf && !ready && !error.hidden);
   action("pick-file").disabled = !pdf || pdf.mode === "loading-pdf";
   if (!session) return;
   document.querySelector<HTMLElement>('[data-testid="browser-location"]')!.textContent = session.location;
   filter.readOnly = session.inputMode !== "filter";
-  filter.disabled = !ready || checking || session.busy || stale;
+  filter.disabled = !ready || !folderApi || checking || session.busy || stale;
   list.setAttribute("aria-busy", String(checking || session.busy));
   if (!composing && filter.value !== session.filter) filter.value = session.filter;
   document.getElementById("filter-mode")!.textContent = session.inputMode === "filter" ? "FILTER" : "NAMES";
-  message.textContent = session.view === "empty" ? "Add a folder to browse its PDFs. You can register several folders."
+  message.textContent = historyNotice || (session.view === "empty" ? "Add a folder to browse its PDFs. You can register several folders."
     : session.view === "permission" ? "Read access is required. Press Enter to confirm, or Esc to choose another folder."
+    : session.entries.length === 0 && session.filter ? "No matching folder or PDF names. Clear the filter to see all items."
     : session.view === "roots" ? "Select a folder and press Enter to make it the default starting folder."
-    : session.entries.length === 0 ? "No matching folders or PDFs." : "";
+    : session.entries.length === 0 ? "This folder has no folders or PDFs to display." : "");
   const rows = session.entries.map((entry, index) => {
     const row = document.createElement("div"); row.className = "browser-row"; row.id = `browser-row-${index}`;
     row.setAttribute("role", "option"); row.setAttribute("aria-label", entry.name);
@@ -84,6 +101,12 @@ function render() {
         event.stopPropagation();
         removingId = entry.id;
         document.getElementById("remove-root-description")!.textContent = `${entry.name} · ${entry.id}`;
+        const remaining = session!.registeredFolders.filter(folder => folder.id !== entry.id);
+        const nextPrimary = remaining.find(folder => folder.isPrimary) ?? remaining[0];
+        document.getElementById("remove-root-outcome")!.textContent = !nextPrimary
+          ? "No registered folders will remain. You can add a folder again."
+          : entry.isPrimary ? `The default starting folder will be ${nextPrimary.name} · ${nextPrimary.id}.`
+          : `The default starting folder stays ${nextPrimary.name} · ${nextPrimary.id}.`;
         removeDialog.showModal(); action("cancel-remove").focus();
       };
       row.append(remove);
@@ -92,7 +115,8 @@ function render() {
       session!.select(index);
       list.querySelectorAll('[role="option"]').forEach((element, selected) => element.setAttribute("aria-selected", String(selected === session!.selectedIndex)));
       list.setAttribute("aria-activedescendant", `browser-row-${session!.selectedIndex}`);
-      list.focus();
+      focusFiles();
+      row.scrollIntoView({ block: "nearest", inline: "nearest" });
     };
     row.ondblclick = () => { session!.select(index); dispatch({ key: "Enter" }); };
     return row;
@@ -101,20 +125,23 @@ function render() {
   if (session.selectedIndex >= 0) list.setAttribute("aria-activedescendant", `browser-row-${session.selectedIndex}`);
   else list.removeAttribute("aria-activedescendant");
   document.getElementById("browser-count")!.textContent = `${rows.length} items`;
-  if (session.inputMode === "filter" && document.activeElement !== filter) filter.focus();
-  else if (session.inputMode !== "filter" && document.activeElement === filter) list.focus();
+  if (folderApi && session.inputMode === "filter" && document.activeElement !== filter) filter.focus({ preventScroll: true });
+  else if (session.inputMode !== "filter" && document.activeElement === filter) focusFiles();
+  if (folderApi && mode === "files" && !removeDialog.open) rows[session.selectedIndex]?.scrollIntoView({ block: "nearest", inline: "nearest" });
 }
 function observe(result: unknown) {
   render();
-  if (result instanceof Promise) void result.catch(showError).finally(() => { render(); if (pdf?.mode === "files" && session?.inputMode !== "filter") list.focus(); });
+  if (result instanceof Promise) void result.catch(showError).finally(() => { render(); if (pdf?.mode === "files" && session?.inputMode !== "filter") focusFiles(); });
 }
 function operate(operation: () => unknown) {
-  if (!ready || stale || checking || session?.busy) return;
+  if (!folderApi || !ready || stale || checking || session?.busy) return;
   error.hidden = true;
+  historyNotice = "";
   try { observe(operation()); } catch (reason) { showError(reason); render(); }
 }
 function dispatch(event: BrowserKey) {
-  if (!session || !ready || stale || checking) return false;
+  if (!folderApi || !session || !ready || stale || checking) return false;
+  historyNotice = "";
   const needsRead = session.view === "browse" && session.inputMode === "normal" && ["Enter", "l", "h"].includes(event.key);
   if (needsRead && !event.repeat) {
     checking = true; render();
@@ -129,9 +156,9 @@ function dispatch(event: BrowserKey) {
   const result = session.key(event); observe(result); return result !== false;
 }
 filter.addEventListener("compositionstart", () => { composing = true; });
-filter.addEventListener("compositionend", () => { composing = false; session?.setFilter(filter.value); render(); });
-filter.addEventListener("input", () => { session?.setFilter(filter.value); render(); });
-filter.addEventListener("focus", () => { if (session?.inputMode === "normal") { session.key({ key: "/" }); render(); } });
+filter.addEventListener("compositionend", () => { composing = false; historyNotice = ""; session?.setFilter(filter.value); render(); });
+filter.addEventListener("input", () => { historyNotice = ""; session?.setFilter(filter.value); render(); });
+filter.addEventListener("focus", () => { if (folderApi && session?.inputMode === "normal") { historyNotice = ""; session.key({ key: "/" }); render(); } });
 document.addEventListener("keydown", event => {
   if (pdf?.mode !== "files" || event.isComposing || composing || removeDialog.open) return;
   const target = event.target as HTMLElement;
@@ -139,7 +166,8 @@ document.addEventListener("keydown", event => {
   if (event.key === "L" && !event.ctrlKey && !event.metaKey && !event.altKey) { event.preventDefault(); history.forward(); return; }
   try { if (dispatch(event)) event.preventDefault(); } catch (reason) { event.preventDefault(); showError(reason); render(); }
 });
-action("cancel-remove").onclick = () => { removeDialog.close(); removingId = null; list.focus(); };
+removeDialog.addEventListener("close", () => { removingId = null; focusFiles(); });
+action("cancel-remove").onclick = () => { removeDialog.close(); removingId = null; focusFiles(); };
 action("confirm-remove").onclick = () => {
   const id = removingId; removeDialog.close(); removingId = null;
   if (id) operate(() => session!.removeRoot(id));
@@ -158,7 +186,7 @@ action("retry").onclick = () => {
     error.hidden = true; observe(session!.refresh());
   }).catch(showError).finally(() => { checking = false; render(); });
 };
-action("roots").onclick = () => { if (ready) { session?.openRoots(); render(); list.focus(); } };
+action("roots").onclick = () => { if (folderApi && ready) { historyNotice = ""; session?.openRoots(); render(); focusFiles(); } };
 action("authorize").onclick = () => operate(() => session!.key({ key: "Enter" }));
 action("settings").onclick = () => { void chrome.runtime.openOptionsPage(); };
 action("back").onclick = () => history.back();
@@ -167,16 +195,19 @@ action("reload-registry").onclick = () => {
   if (!session || session.busy || checking) return;
   ready = false; render();
   void session.start().then(() => { stale = false; error.hidden = true; document.querySelector<HTMLElement>('[data-testid="registry-stale"]')!.hidden = true; })
-    .catch(showError).finally(() => { ready = true; render(); list.focus(); });
+    .catch(showError).finally(() => { ready = true; render(); focusFiles(); });
 };
 const fileInput = document.getElementById("fallback-file") as HTMLInputElement;
 action("pick-file").onclick = () => fileInput.click();
 fileInput.onchange = () => {
   const file = fileInput.files?.[0]; fileInput.value = "";
-  if (file && pdf) observe(pdf.openPdf(file, `https://local-pdf.vimdf.invalid/${crypto.randomUUID()}/${encodeURIComponent(file.name)}`));
+  if (file && pdf) observe(openPdf(file, `https://local-pdf.vimdf.invalid/${crypto.randomUUID()}/${encodeURIComponent(file.name)}`));
 };
 window.addEventListener("popstate", event => {
-  if (event.state?.view === "pdf") observe(pdf?.forward(event.state.token));
+  historyNotice = "";
+  if (event.state?.view === "pdf") observe(pdf?.forward(event.state.token).then(retained => {
+    if (!retained) historyNotice = "Select the PDF again to reopen this discarded history entry.";
+  }));
   else observe(pdf?.back());
 });
 window.addEventListener("focus", () => {
@@ -188,15 +219,16 @@ async function bootstrap() {
   if (chrome.extension.inIncognitoContext || window.parent !== window) throw new Error("Open the local PDF browser in a regular top-level tab.");
   const settings = await loadSettings();
   const runtime = createViewerRuntime(settings, direction => direction === "back" ? history.back() : history.forward());
-  pdf = createLocalPdfController({ createRuntime: () => runtime, history, onMode: () => { render(); if (pdf?.mode === "files") list.focus(); } });
+  pdf = createLocalPdfController({ createRuntime: () => runtime, history, onMode: () => { render(); if (pdf?.mode === "files") focusFiles(); } });
   history.replaceState({ view: "files" }, "");
   storage = await createFolderStorage({ indexedDB, BroadcastChannel,
     pick: options => (window as PickerWindow).showDirectoryPicker!(options), newId: () => crypto.randomUUID(),
     onChanged: announceStale, onBlocked: () => showError(new Error("Saved folders are blocked by another tab. Close it and reload.")),
     onVersionChange: () => { ready = false; showError(new Error("Folder storage changed. Reload this tab.")); render(); },
   });
-  session = new LocalBrowserSession({ registry: new FolderRegistry(storage), openPdf: (file, identity) => pdf!.openPdf(file, identity) });
-  await session.start(); ready = true; root.hidden = false; render(); list.focus();
+  session = new LocalBrowserSession({ registry: new FolderRegistry(storage), openPdf });
+  if (folderApi) await session.start();
+  ready = true; root.hidden = false; render(); focusFiles();
 }
 render();
 void bootstrap().catch(reason => {

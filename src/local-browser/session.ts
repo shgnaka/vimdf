@@ -47,6 +47,12 @@ export class LocalBrowserSession {
   get busy(): boolean { return this.running; }
   get inputMode(): "normal" | "filter" { return this.mode; }
   get location(): string { return this.view === "browse" ? this.browser!.location : "Registered folders"; }
+  /** All committed registrations, regardless of the current name filter. */
+  get registeredFolders(): readonly RegisteredEntry[] {
+    return this.registry.roots.map(root => ({
+      id: root.id, name: root.handle.name, isPrimary: root.id === this.registry.primaryId,
+    }));
+  }
   get entries(): readonly (LocalEntry | RegisteredEntry)[] {
     return this.view === "browse" ? this.browser!.entries : this.view === "roots" ? this.rootSelection.entries : [];
   }
@@ -207,9 +213,7 @@ export class LocalBrowserSession {
   }
 
   private showRoots(selectedId: string | null): void {
-    this.rootSelection.replace(this.registry.roots.map(root => ({
-      id: root.id, name: root.handle.name, isPrimary: root.id === this.registry.primaryId,
-    })), "");
+    this.rootSelection.replace(this.registeredFolders, "");
     this.rootSelection.select(this.rootSelection.entries.findIndex(root => root.id === selectedId));
     this.currentView = "roots";
     this.mode = "normal";
