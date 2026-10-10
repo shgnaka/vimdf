@@ -106,7 +106,7 @@ function render() {
         document.getElementById("remove-root-outcome")!.textContent = !nextPrimary
           ? "No registered folders will remain. You can add a folder again."
           : entry.isPrimary ? `The default starting folder will be ${nextPrimary.name} · ${nextPrimary.id}.`
-          : `The default starting folder stays ${nextPrimary.name} · ${nextPrimary.id}.`;
+          : "The default starting folder stays the same.";
         removeDialog.showModal(); action("cancel-remove").focus();
       };
       row.append(remove);

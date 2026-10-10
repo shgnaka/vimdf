@@ -154,8 +154,12 @@ async function main(): Promise<void> {
     window.parent.postMessage("vimdf:loaded", "*");
   }
 
-  void checkAndShowConflictWarning();
-  void checkAndShowUpdateNotification();
+  // Keep the empty Viewer's open controls accessible. Leave notification
+  // flags pending until this page has a document to display.
+  if (source) {
+    void checkAndShowConflictWarning();
+    void checkAndShowUpdateNotification();
+  }
 
   // Reading a file the user hands us directly needs no permission of any
   // kind, so this doubles as the recovery path for every local-file failure
@@ -180,6 +184,10 @@ async function main(): Promise<void> {
       if (previous) await runtime.save(previous);
       await runtime.load({ data, identity });
       runtime.resume();
+      if (!source) {
+        void checkAndShowConflictWarning();
+        void checkAndShowUpdateNotification();
+      }
     } catch (err) {
       if ((err as { name?: string }).name === "AbortError") return;
       document.getElementById("statusLeft")!.textContent =
