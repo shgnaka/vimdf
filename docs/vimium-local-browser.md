@@ -8,7 +8,7 @@ Vimium-C の Vomnibar で `vimdf` を確定すると、VimDF 専用タブで登�
 
 [統合仕様](local-browser-integration.md) に同一タブ内の一覧 / PDF 切り替え、IDB の revision 比較、Viewer の文書交換、外部起動と実機の受け入れ条件を定義する。
 
-2026-10-10 のデザイン検討による [一覧 UI・キー・ヘルプ・CSS の改訂仕様](local-browser-ui.md) を追加した。ロゴ・Settings・常設の検索欄 / キー案内を除去し、r、一覧全状態の a、? ヘルプ、共通 Options の CSS 編集を追加する。これらの追加要件は実装・テスト未対応であり、既存機能の成功記録とは分ける。
+2026-10-10 のデザイン検討による [一覧 UI・キー・ヘルプ・CSS の改訂仕様](local-browser-ui.md) を追加した。ロゴ・Settings・常設の検索欄 / キー案内を除去し、r、一覧全状態の a、? ヘルプ、共通 Options の CSS 編集を実装・検証済み。[デザイン確定案 v1](local-browser-design.md) では Viewer / Options を変更せず一覧の配色・配置と例外状態を具体化した。見本の確認と本番への見た目の反映は別の段階として扱う。
 
 Vomnibar の候補にローカルファイルを追加しない。VimDF は `omnibox.keyword` を登録せず、既存のアドレスバーや他の検索エンジンの設定を変更しない。アーカイブされた別の omnibar プロジェクトには依存しない。対象はデスクトップの Chromium 系ブラウザの拡張専用タブ。フォルダ機能は File System Access API の利用可否で判定する。[対応方針](local-browser-compatibility.md) に従い、代表環境の実機確認と CI の証拠を分ける。通常の PDF 利用は Vimium-C を必須としない。
 
