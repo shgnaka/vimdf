@@ -28,7 +28,7 @@ getDocument が返す loadingTask.onPassword を loadingTask.promise の await �
 
 src/viewer/passwords.ts に以下を実装している。viewer.load、設定画面、Chrome ローカル保存に接続済み。
 
-実行環境は Node.js 24 以上。npm ci の後 npm run test:password で契約テスト、保存処理テスト、実 PDF.js 結合テストを実行する。従来 34 件に保管庫 101 件を加え、合計 135 件。RC4-128 と AES-256 の合成 PDF フィクスチャは pypdf で作成した空白 1 ページの文書で、実ユーザーの文書やパスワードを含まない。PDF.js 結合テストのタイムアウトは 10 秒、その他の読み込み契約テストは 2 秒。npm run build は型チェックも行う。GitHub Actions でもテストとビルドを実行する。
+実行環境は Node.js 24 以上。npm ci の後 npm run test:password で契約テスト、保存処理テスト、実 PDF.js 結合テストを実行する。従来 34 件に保管庫 103 件を加え、合計 137 件。RC4-128 と AES-256 の合成 PDF フィクスチャは pypdf で作成した空白 1 ページの文書で、実ユーザーの文書やパスワードを含まない。PDF.js 結合テストのタイムアウトは 10 秒、その他の読み込み契約テストは 2 秒。npm run build は型チェックも行う。GitHub Actions でもテストとビルドを実行する。
 
 - documentKey(identity: string): string — URL のフラグメント除去。HTTP(S)/file 以外は関連付け不可として例外。ファイルバイトのハッシュは呼び出し側が生成する。
 - selectCandidates(records, rememberedId, enabled): Record[] — 有効・適用範囲・順序・秘密文字列の重複排除。

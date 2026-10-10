@@ -6,13 +6,13 @@
 
 | ファイル | ケース数 | 内容 |
 | --- | --- | --- |
-| `tests/password-vault.test.mjs` | 95 | 暗号・保存・解錠・バックアップ・復元・再認証・移行・取消・競合。うち 2 件は独立した Web Crypto oracle の検査 |
+| `tests/password-vault.test.mjs` | 97 | 暗号・保存・解錠・バックアップ・復元・再認証・移行・取消・競合。うち 2 件は独立した Web Crypto oracle の検査 |
 | `tests/password-vault-pdfjs.test.mjs` | 6 | 実 RC4-128 / AES-256 PDF の復号、ロック中の手入力、非暗号化 PDF、保存失敗 |
 | `tests/browser/password-vault.spec.mjs` | 25 | 本番 Options と一覧・Viewer、実ダウンロード・復元・移行、DOM・入力・フォーカス、解錠取消後の PDF 手入力、native IDB / OPFS の保持 |
 
-`tests/helpers/password-vault-fixtures.mjs` は storage / 排他制御 / 時計 / Web Crypto 境界の観測だけを提供する。暗号化 fixture と復号 oracle は Web Crypto を直接呼び、本番の暗号ヘルパーを使わない。fixture のパスワードや PDF は合成データで、利用者の秘密を使わない。
+`tests/helpers/password-vault-fixtures.mjs` は storage / 排他制御 / 時計 / Web Crypto 境界の観測だけを提供する。暗号化 fixture と復号 oracle は Web Crypto を直接呼び、本番の暗号ヘルパーを使わない。fixture のパスワードや PDF は合成データで、利用者の秘密を使わない。Chrome storage が JSON の項目順を変更する境界を追加 2 ケースで再現し、作成・解錠・再認証・復元・移行が順序に依存しないことも検査する。
 
-Node.js 24 以上と既存依存関係を使う。`npm run test:password` の既存 glob は Node 101 ケースと旧 34 ケースを自動収集する。`npm run test:local-browser:browser` の既存 glob は Chromium 25 ケースを追加収集する。CI の失敗条件は変更しない。
+Node.js 24 以上と既存依存関係を使う。`npm run test:password` の既存 glob は Node 103 ケースと旧 34 ケースを自動収集する。`npm run test:local-browser:browser` の既存 glob は Chromium 25 ケースを追加収集する。CI の失敗条件は変更しない。
 
 ```sh
 node --test --test-reporter=tap tests/password-vault*.test.mjs
@@ -115,8 +115,20 @@ PDF の手入力 dialog に `Unlock vault` を用意し、解錠成功後は実�
 
 ## 検証記録
 
-実装の初回コミット `ebe955d0f6b2140799ebe032eca0ae075e53c43f` で、[Node CI](https://github.com/shgnaka/vimdf/actions/runs/38056291118) と [統合契約 CI](https://github.com/shgnaka/vimdf/actions/runs/38056291149) が成功。パスワード 135（新規 101・既存 34）、フォルダモデル 111（新規 27・既存 84）、スクロール 14、統合契約 50、型検査・build を確認した。Chromium 111 ケースの最終結果は後続の記録に追記する。
+実装コミット `4022cc6c946e62aa10745548fab949548a2be6e7` の [Node CI](https://github.com/shgnaka/vimdf/actions/runs/38056871733) と [Chromium・統合契約 CI](https://github.com/shgnaka/vimdf/actions/runs/38056871877) が全件成功。ログの checkout と件数を確認した。Node 312、Chromium 111、合計 423 ケースが成功し、型検査・production build も成功した。
+
+| 検証層 | 成功件数 |
+| --- | --- |
+| パスワード Node / 実 PDF.js | 137（保管庫 103・従来 34） |
+| フォルダモデル | 111（UX 27・従来 84） |
+| スクロール | 14 |
+| 統合契約 | 50 |
+| Chromium | 111（保管庫 25・UX 41・従来 45） |
+
+SEC の対象は追加回帰 2 件を含めて 128 ケース（Node 103・Chromium 25）、UX の対象は 68 ケース（Node 27・Chromium 41）。従来 227 ケースもすべて成功した。Chrome storage の項目順変更への対応、dialog の確定・取消とフォーカス復帰を本番側で修正した。
 
 以前のテスト追加時点 `3eae5f26d0fa6e948bdbef338fa7ef5c2fbe4c69` は新規 126 が 4 成功・122 失敗で、暗号化 store と画面不足を通常の失敗として検出していた。この実装でテストを skip / todo / 期待失敗へ変更していない。独立 oracle 2 件、実非暗号化 PDF 2 件だけの成功を暗号化の実装成功として数えない。
 
 ローカルの Chromium ダウンロードは失敗したため、構文・収集・Node・build の確認と CI の実画面試験を区別する。CI は本番 DOM / Chrome storage / native IDB / OPFS / PDF.js を使用し、picker・incognito・I/O 障害等の境界だけを制御する。native clipboard、実 incognito プロファイル、OS picker 等は上記の実機確認範囲。
+
+CSS テストでは `<style>` の内容を `textContent` プロパティで直接検査する。Playwright の表示文字マッチャーは STYLE と head 内の要素を対象外にするため、実装接続後に判明した検査方法の誤りを修正した。computed style・保存値・ライブ反映・DOM 注入禁止の検査は維持し、テスト数を減らしていない。

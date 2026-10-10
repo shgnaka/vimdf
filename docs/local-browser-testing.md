@@ -4,11 +4,11 @@
 
 ## 今回の実装検証
 
-`ebe955d0f6b2140799ebe032eca0ae075e53c43f` の [Node CI](https://github.com/shgnaka/vimdf/actions/runs/38056291118) と [統合契約 CI](https://github.com/shgnaka/vimdf/actions/runs/38056291149) が成功。フォルダモデルは新規 27 を含めた 111、パスワードは新規 101 を含めた 135、scroll 14、統合契約 50。Chromium は旧 45・UX 41・SEC 25 の合計 111 を実行し、最終結果を追記する。以下の赤い検証記録は過去のテスト追加時点のもの。
+`4022cc6c946e62aa10745548fab949548a2be6e7` の [Node CI](https://github.com/shgnaka/vimdf/actions/runs/38056871733) と [Chromium・統合契約 CI](https://github.com/shgnaka/vimdf/actions/runs/38056871877) が全件成功。フォルダモデル 111（UX 27・従来 84）、パスワード 137（保管庫 103・従来 34）、scroll 14、統合契約 50、Chromium 111（従来 45・UX 41・SEC 25）。Node 312 と Chromium 111 の合計 423 ケース、型検査・production build が成功した。ログの checkout と件数を確認し、テストを skip / todo / 期待失敗へ変更していない。以下の赤い検証記録は過去のテスト追加時点のもの。
 
 ## UX-01〜13 の追加テスト
 
-2026-10-10 に新規 68 ケースを追加した。既存テストは削除・skip・期待失敗化せず、既存 CI の glob に含める。今回の変更はテストと文書のみで、本番ソースを変更しない。
+2026-10-10 に新規 68 ケースを追加した。既存テストは削除・skip・期待失敗化せず、既存 CI の glob に含める。追加時はテストと文書のみを変更し、上記の実装検証で本番ソースの接続を確認した。
 
 | 条件 | モデル / Chromium の検査 |
 | --- | --- |
@@ -37,7 +37,7 @@
 
 追加する accessible / 検査識別子は、ヘルプ dialog 名 `Local PDF browser keybindings` / `PDF viewer keybindings`、絞り込み textbox 名 `Filter keybindings`、フォーカス可能な scroll 要素 `data-testid="help-scroll"`。一覧ヘルプのコマンド行には共通定義から `data-command` とキー要素 `data-key` を付け、画面で利用できる操作だけ表示する。Options の CSS 要素は `customCss` / `saveCustomCss` / `resetCustomCss` / `customCssStatus`。適用 style の識別子は `data-vimdf-custom-css`。これらは本番へ接続済みの識別子であり、テスト側で模倣 UI を生成しない。
 
-OS picker の中での Tab / Enter、ブラウザの拡張アイコン右クリック → Options は native UI の代表実機確認を維持する。パスワードの暗号化・バックアップ・平文エクスポート・復元は UX-01〜13 と区別し、[保管庫の追加テスト](pdf-password-testing.md) で SEC-01〜24 を検査する。Node 101・Chromium 25 ケースを追加し、既存 34 件のパスワードテストやこの節の旧 CI 件数に加算しない。既存の UI テストと同じ Chromium glob で実行する。
+OS picker の中での Tab / Enter、ブラウザの拡張アイコン右クリック → Options は native UI の代表実機確認を維持する。パスワードの暗号化・バックアップ・平文エクスポート・復元は UX-01〜13 と区別し、[保管庫の追加テスト](pdf-password-testing.md) で SEC-01〜24 を検査する。Node 103・Chromium 25 ケースを追加し、既存 34 件のパスワードテストやこの節の旧 CI 件数に加算しない。既存の UI テストと同じ Chromium glob で実行する。
 
 ## 状態と実行方法
 
@@ -102,7 +102,7 @@ npm run test:local-browser:browser
 
 ブラウザテストは Playwright の Chromium を persistent context で起動し、実 `dist/` とテスト専用の送信拡張を読み込む。製品の DOM、Viewer、IndexedDB、拡張メッセージを利用し、picker / permission の境界だけを制御する。OPFS の native `FileSystemDirectoryHandle` を保存するため、native clone を確認できる。ただし OS の実ディレクトリの picker と権限保持は MR-01 が必要。合成した IME イベントと本物の日本語 IME、送信拡張と本物の Vomnibar も区別する。
 
-`.github/workflows/test.yml` はモデル・パスワード・スクロールの 132 件と build、`.github/workflows/local-integration.yml` は統合契約と Chromium の両 job を push / PR で実行する。両 suite とも失敗をそのまま返す。ブラウザ失敗時の trace と screenshot は fixture が保存する。ローカル環境では Chromium の取得が失敗したため、実ブラウザの結果は GitHub Actions の実行を根拠とする。
+`.github/workflows/test.yml` はモデル・パスワード・スクロールの 262 件と build、`.github/workflows/local-integration.yml` は統合契約 50 件と Chromium 111 件の両 job を push / PR で実行する。両 suite とも失敗をそのまま返す。ブラウザ失敗時の trace と screenshot は fixture が保存する。ローカル環境では Chromium の取得が失敗したため、実ブラウザの結果は GitHub Actions の実行を根拠とする。
 
 ## 本番実装の接続契約
 
