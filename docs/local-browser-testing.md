@@ -9,16 +9,16 @@
 | モデル | 84 | 成功。既存 78 件と新規 FM 6 件。フェイクの handle / I/O でモデル契約を検証 |
 | 既存パスワード / スクロール | 34 / 14 | 成功。既存機能の回帰確認 |
 | Node の統合契約 | 50 | 成功。保存の commit / abort、競合、起動、PDF controller と配布 build を検証 |
-| Chromium の拡張・DOM・native IDB | 45 | 33 成功・12 失敗。個別管理の新規 18 件は 14 成功・4 失敗。追加前の 27 件は 19 成功・8 失敗 |
+| Chromium の拡張・DOM・native IDB | 45 | 全件成功。個別管理の新規 18 件、画面の受け入れ 9 件、既存 18 件を検証 |
 | 代表環境での実 Vimium-C / OS picker | 8 手順 | 未実施。後述の MR-01〜08 を確認する。全 OS・全ブラウザ版の組み合わせは要求しない |
 
-確認日：2026-10-09。追加前は Node 合計 176 件、Chromium 18 件が成功し、[PR の CI 実行](https://github.com/shgnaka/vimdf/actions/runs/37922809087) でも統合契約・ブラウザの両 job が成功。ただし仕様の一部を検査できていなかったため、全要件の実装完了とは扱わない。実 Vimium C / Brave / OS picker の確認は未実施。
+確認日：2026-10-10。実装コミット `a11383472beb2fbcea2040dd0a006e151afbe459` に対する [統合契約・ブラウザ CI](https://github.com/shgnaka/vimdf/actions/runs/38011984668) と [モデル・パスワード・スクロール・build CI](https://github.com/shgnaka/vimdf/actions/runs/38011984609) は成功。ログの checkout と合計を確認し、Node 182 件、Chromium 45 件、型検査・production build の成功を記録する。テストの削除や期待失敗への変更は行っていない。自動試験と実 Vimium-C / OS picker の実機確認を区別する。
 
-### 監査で見つかった未充足の画面要件
+### 受け入れテストが検出した画面の不足と修正
 
 `local-browser-acceptance.spec.mjs` に追加した 9 件は、既存モデル・controller の戻り値だけでなく本番 DOM と実際の利用者操作を検査する。[追加後の CI 記録](https://github.com/shgnaka/vimdf/actions/runs/37927907805)（`31211cc2868ff2f94de75f9cb974a9d72b5f5c43`）は 19 成功・8 失敗。Node 176 件と build は成功。追加した 8 件の失敗は下表の未実装によるものであり、既存 18 件と file fallback の正の対照 1 件は成功。未実装を `skip` / `todo` / `test.fail` や固定の失敗で隠さず、通常の失敗として返す。
 
-失敗理由は、2 種類の一覧で選択行の可視率が 0、履歴の再選択案内が存在しない、通常 Viewer の導線が 0 件、空フォルダと検索結果なしの文が同一、登録一覧の検索結果なしでも確定案内が残る、非対応でも登録ボタンが見える、非対応画面の Enter で `showDirectoryPicker is not a function` が表示される、の 8 件。フォルダ登録を使えない構成でも、通常ファイル選択による PDF 表示と一覧復帰は成功する。
+追加時の失敗理由は、2 種類の一覧で選択行の可視率が 0、履歴の再選択案内が存在しない、通常 Viewer の導線が 0 件、空フォルダと検索結果なしの文が同一、登録一覧の検索結果なしでも確定案内が残る、非対応でも登録ボタンが見える、非対応画面の Enter で `showDirectoryPicker is not a function` が表示される、の 8 件だった。実装側で選択行のスクロール追従、履歴の再選択案内、共有 launcher を使う Viewer の起動ボタン、空一覧と検索結果なしの区別を追加した。空の Viewer では通知を文書開封まで保留し、起動ボタンを覆わない。API 不在時はフォルダの操作・キー案内を隠し、DB の store 初期化後に接続を閉じ、保存ハンドルの復元とフォルダ読取を始めず、通常ファイル選択で PDF を開ける。
 
 | 仕様の不足していた検査 | 追加テスト |
 | --- | --- |
@@ -34,14 +34,14 @@
 
 ### 個別のフォルダ管理を検査する追加テスト
 
-2026-10-10 に `tests/local-browser-folder-management.test.mjs` と `tests/browser/local-folder-management.spec.mjs` を追加した。Node 合計 182 件と production build は成功。Playwright は全 45 件を実行し、[初回の CI](https://github.com/shgnaka/vimdf/actions/runs/37952708950)（`07c8475fe305c624507692cf0f1717ad644a671c`）は 33 成功・12 失敗。新規 18 件のうち 14 件は成功し、以下の 4 件の不足を検出した。既存 8 件の失敗も未修正。収集成功を動作確認成功と数えない。
+2026-10-10 に `tests/local-browser-folder-management.test.mjs` と `tests/browser/local-folder-management.spec.mjs` を追加した。[初回の CI](https://github.com/shgnaka/vimdf/actions/runs/37952708950)（`07c8475fe305c624507692cf0f1717ad644a671c`）では全 45 件が 33 成功・12 失敗となり、既存 8 件に加えて新規 18 件中の 4 件が不足を検出した。下表の実装修正後は同じテストが全件成功し、既存の成功ケースも保持した。
 
-| 未充足の条件 | 検出結果 |
+| 検出した条件 | 実装修正 |
 | --- | --- |
-| FM-04 / FM-08：`Esc` で解除取消後の一覧フォーカス | 確認は閉じるが listbox は inactive。取消ボタンの場合は一覧へ戻る |
-| FM-04 / FM-05：プライマリー解除前の次の既定の説明 | 確認画面に次の既定となる Books の説明がない |
-| FM-04 / FM-05：最後の登録を解除した後の説明 | 確認画面に未登録になる説明がない |
-| FM-07：native commit 失敗の通知 | put 成功後に transaction を abort しても alert が表示されない |
+| FM-04 / FM-08：`Esc` で解除取消後の一覧フォーカス | native dialog の close を処理し、取消対象を消して一覧へ戻す |
+| FM-04 / FM-05：プライマリー解除前の次の既定の説明 | 絞り込み前の全登録から、登録順で次に既定になる名前を確認画面へ表示 |
+| FM-04 / FM-05：最後の登録を解除した後の説明 | 登録が 0 件になることと、改めて追加できることを確認前に説明 |
+| FM-07：native commit 失敗の通知 | save の AbortError を alert に表示。picker の取消は Registry、PDF の取消は PDF 開封処理で扱い、登録保存の失敗と混同しない |
 
 個別解除の確認・取消とフォーカス、同名登録の識別、次の既定と最後の登録の説明、native transaction の保留と put 成功後の abort、別タブの変更、実ファイル bytes と全保存先の保持、読み込み済み PDF の保持と再登録後の新 identity を検査する。実 Vimium-C を導入していない構成の設定ボタン・フォルダ画面・PDF 検索も実行する。この結果を通常の Vimium 自体の起動連携や、特定の Vimium-C 版の動作確認には一般化しない。
 
@@ -63,7 +63,7 @@ npm run test:local-browser:browser
 
 ブラウザテストは Playwright の Chromium を persistent context で起動し、実 `dist/` とテスト専用の送信拡張を読み込む。製品の DOM、Viewer、IndexedDB、拡張メッセージを利用し、picker / permission の境界だけを制御する。OPFS の native `FileSystemDirectoryHandle` を保存するため、native clone を確認できる。ただし OS の実ディレクトリの picker と権限保持は MR-01 が必要。合成した IME イベントと本物の日本語 IME、送信拡張と本物の Vomnibar も区別する。
 
-`.github/workflows/test.yml` は既存の 126 件と build、`.github/workflows/local-integration.yml` は統合契約と Chromium の両 job を push / PR で実行する。両 suite とも失敗をそのまま返す。ブラウザ失敗時の trace と screenshot は fixture が保存する。ローカル環境では Chromium の取得が失敗したため、実ブラウザの結果は GitHub Actions の実行を根拠とする。
+`.github/workflows/test.yml` はモデル・パスワード・スクロールの 132 件と build、`.github/workflows/local-integration.yml` は統合契約と Chromium の両 job を push / PR で実行する。両 suite とも失敗をそのまま返す。ブラウザ失敗時の trace と screenshot は fixture が保存する。ローカル環境では Chromium の取得が失敗したため、実ブラウザの結果は GitHub Actions の実行を根拠とする。
 
 ## 本番実装の接続契約
 
@@ -71,7 +71,7 @@ npm run test:local-browser:browser
 
 | 接点 | API と意味 |
 | --- | --- |
-| `LocalBrowserSession` | `select(index)`、`openRoots()`、`removeRoot(id)`。行クリックは filter 後の index を選ぶだけ。不正 index と busy 中の選択は無視。子フォルダから登録一覧へ直接移り、解除成功後だけ取消 snapshot を無効化 |
+| `LocalBrowserSession` | `select(index)`、`openRoots()`、`removeRoot(id)`、`registeredFolders`。行クリックは filter 後の index を選ぶだけ。不正 index と busy 中の選択は無視。子フォルダから登録一覧へ直接移り、解除成功後だけ取消 snapshot を無効化。確認文の次の既定は filter 前の全登録から求める |
 | `src/local-browser/indexeddb.ts` | `createFolderStorage(options):Promise<Storage>`。初期化は DB open、状態復元は `load()`。`load` / `save` / `pick` / `newId` は既存 `FolderStorage` と同じ。`checkRevision():Promise<boolean>` は変更の有無を返し、期待 revision を更新しない。`close()` は接続・通知 listener を解放 |
 | storage options | `indexedDB`、`BroadcastChannel`、`pick`、`newId`、任意の `onChanged` / `onBlocked` / `onVersionChange`。DB 名と store 名は統合仕様の固定値。通知 payload は `{revision}` だけ。bootstrap 中に picker を呼ばない |
 | `src/local-browser/pdf-controller.ts` | `createLocalPdfController(options)`。`openPdf(File,identity)`、`back()`、`forward(token):Promise<boolean>`、`cancel()`、冪等な `dispose()`。公開状態は `mode` と `documentToken`。mode は `files` / `loading-pdf` / `pdf` |

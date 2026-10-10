@@ -2,7 +2,7 @@
 
 ## 適用範囲と実装状態
 
-[基本仕様](vimium-local-browser.md) の複数登録・プライマリー・キー操作を、実際の拡張画面へ接続する要件。モデル、専用画面、IndexedDB アダプター、共有 Viewer runtime、外部起動リスナー、設定 UI を実装済み。残る画面要件の不足は [統合テストの契約・対応表](local-browser-testing.md) に記録する。通常の登録編集は [フォルダごとの管理仕様](local-folder-management.md)、Chromium 系の対象と Vimium / Vimium-C の違いは [対応方針](local-browser-compatibility.md) に従う。
+[基本仕様](vimium-local-browser.md) の複数登録・プライマリー・キー操作を、実際の拡張画面へ接続する要件。モデル、専用画面、IndexedDB アダプター、共有 Viewer runtime、外部起動リスナー、設定 UI を実装済み。自動テストの結果と残る実機確認は [統合テストの契約・対応表](local-browser-testing.md) に記録する。通常の登録編集は [フォルダごとの管理仕様](local-folder-management.md)、Chromium 系の対象と Vimium / Vimium-C の違いは [対応方針](local-browser-compatibility.md) に従う。
 
 | 領域 | 採用する構成 | 現在のコードとの接点 |
 | --- | --- | --- |
