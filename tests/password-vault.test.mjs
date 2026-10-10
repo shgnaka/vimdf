@@ -42,6 +42,29 @@ test('[SEC-05/SEC-06] policy exposes bounded security parameters without fixing 
     assert.ok(Number.isSafeInteger(p[key]) && p[key] > 0, `Invalid policy: ${key}`);
   assert.ok(p.minKdfIterations >= 600000); assert.ok(p.maxKdfIterations >= p.minKdfIterations);
 });
+
+// Real Chrome storage returns object members in a different order from the
+// writer. Cryptographic AAD and session identity must use canonical fields.
+function reordered(value) {
+  if (Array.isArray(value)) return value.map(reordered);
+  if (value && typeof value === 'object') return Object.fromEntries(Object.keys(value).sort().map(k => [k, reordered(value[k])]));
+  return value;
+}
+test('[SEC-01/SEC-03/SEC-14] reordered storage fields preserve creation, unlock, reauthentication and restore generations', async () => {
+  const f = vaultFixture(); f.io.hooks.get = async () => f.io.replace(reordered(f.io.snapshot()));
+  await f.store.create(master, master); assert.equal((await f.store.status()).state, 'unlocked');
+  await f.store.register(draft()); await f.store.lock(); await f.store.unlock(master);
+  const token = await permit(f); assert.equal(JSON.parse((await f.store.exportPlaintext(token, { confirmed: true })).text).records.length, 1);
+  const ticket = await f.store.prepareRestore(JSON.stringify(reordered(await seal())), master);
+  await f.store.restore(ticket.token, { confirmed: true }); await f.store.unlock(master);
+  assert.deepEqual(await f.store.vault(), payload());
+});
+test('[SEC-21] reordered Chrome-style legacy/envelope fields still verify readback before migration deletion', async () => {
+  const old = payload(), f = vaultFixture({ initial: { [v1]: old } });
+  f.io.hooks.get = async () => f.io.replace(reordered(f.io.snapshot()));
+  await f.store.migrate(master, master); assert.equal(f.io.snapshot()[v1], undefined);
+  assert.equal((await f.store.status()).state, 'unlocked'); assert.deepEqual(await unseal(f.io.snapshot()[v2]), old);
+});
 test('[SEC-01/SEC-08] empty profile needs explicit creation before saving and remains usable without persistence', async () => {
   const f = vaultFixture(); assert.equal((await f.store.status()).state, 'uninitialized');
   assert.deepEqual(await f.store.read(documentKey), { records: [], rememberedId: null });

@@ -8,6 +8,8 @@ const key = 'vimdf.customCss.v1';
 const screen = page => page.getByTestId('local-browser');
 const cssInput = page => page.locator('#customCss');
 const status = page => page.locator('#customCssStatus');
+// Playwright's rendered-text matcher excludes STYLE nodes. Check the actual
+// style textContent; computed-style assertions separately prove application.
 const style = page => page.locator('style[data-vimdf-custom-css]');
 const browserHelp = page => page.getByRole('dialog', { name: 'Local PDF browser keybindings', exact: true });
 const viewerHelp = page => page.getByRole('dialog', { name: 'PDF viewer keybindings', exact: true });
@@ -113,8 +115,8 @@ test('[UX-11] CSS draft applies only after save, uses local rather than sync, an
   await extension.setupPage.locator('#saveCustomCss').click(); await expect(status(extension.setupPage)).toContainText(/saved/i);
   expect(await stored(extension)).toEqual({ version: 1, css: longCss });
   expect(await extension.setupPage.evaluate(async key => (await chrome.storage.sync.get(key))[key], key)).toBeUndefined();
-  await expect(style(page)).toHaveText(longCss); await page.reload();
-  await expect(style(page)).toHaveText(longCss); await extension.setupPage.reload();
+  await expect(style(page)).toHaveJSProperty('textContent', longCss); await page.reload();
+  await expect(style(page)).toHaveJSProperty('textContent', longCss); await extension.setupPage.reload();
   await expect(cssInput(extension.setupPage)).toHaveValue(longCss);
 });
 
@@ -122,7 +124,7 @@ test('[UX-11] live CSS keeps filter input, focus, selection, help and PDF page i
   await extension.seed(); const page = await extension.openBrowser(); await ready(page);
   await page.keyboard.press('/'); await page.getByTestId('browser-filter').fill('course');
   const before = await listState(page);
-  await setCss(extension, testCss); await expect(style(page)).toHaveText(testCss);
+  await setCss(extension, testCss); await expect(style(page)).toHaveJSProperty('textContent', testCss);
   expect(await listState(page)).toEqual(before); await expect(page.getByTestId('browser-filter')).toBeFocused();
   await page.keyboard.press('Enter'); await page.keyboard.press('?');
   const focused = await page.evaluate(() => document.activeElement.id);
@@ -134,7 +136,7 @@ test('[UX-11] live CSS keeps filter input, focus, selection, help and PDF page i
   await expect(page.locator('#statusLeft')).toContainText('Page 2 / 2');
   await page.keyboard.press('/'); await page.locator('#searchInput').fill('query-with-no-PDF-match');
   const pdfFocus = await page.evaluate(() => document.activeElement.id);
-  await setCss(extension, testCss); await expect(style(page)).toHaveText(testCss);
+  await setCss(extension, testCss); await expect(style(page)).toHaveJSProperty('textContent', testCss);
   await expect(page.locator('#searchInput')).toHaveValue('query-with-no-PDF-match');
   expect(await page.evaluate(() => document.activeElement.id)).toBe(pdfFocus);
   await expect(page.locator('#statusLeft')).toContainText('Page 2 / 2');
@@ -153,9 +155,9 @@ test('[UX-11] failed save retains draft and last saved styles, reports unsaved, 
   await cssInput(extension.setupPage).fill(draft); await extension.setupPage.locator('#saveCustomCss').click();
   await expect(status(extension.setupPage)).toContainText(/could not|failed|unsaved|unable/i);
   await expect(cssInput(extension.setupPage)).toHaveValue(draft);
-  expect(await stored(extension)).toEqual({ version: 1, css: testCss }); await expect(style(page)).toHaveText(testCss);
+  expect(await stored(extension)).toEqual({ version: 1, css: testCss }); await expect(style(page)).toHaveJSProperty('textContent', testCss);
   await extension.setupPage.evaluate(() => window.__restoreCssSave()); await save(extension.setupPage, draft);
-  await expect(style(page)).toHaveText(draft);
+  await expect(style(page)).toHaveJSProperty('textContent', draft);
 });
 
 test('[UX-11] failed CSS read leaves built-in UI usable and never overwrites stored CSS', async ({ extension }) => {
@@ -175,7 +177,7 @@ test('[UX-11] invalid CSS is ignored per declaration and style text never become
   await extension.seed(); const page = await extension.openBrowser(); await ready(page);
   const css = `/* </style><img id="css-injection" src=x onerror="window.__cssInjected=true"> */
 .vimdf-browser { color: this-is-not-a-color; --vimdf-selection-bg: #123456; }`;
-  await save(extension.setupPage, css); await expect(style(page)).toHaveText(css);
+  await save(extension.setupPage, css); await expect(style(page)).toHaveJSProperty('textContent', css);
   await expect(page.locator('.vimdf-row[aria-selected="true"]')).toHaveCSS('background-color', 'rgb(18, 52, 86)');
   await expect(page.locator('#css-injection')).toHaveCount(0);
   expect(await page.evaluate(() => window.__cssInjected)).toBeUndefined();
@@ -231,7 +233,7 @@ test('[UX-12/UX-09] repeated CSS updates and mode changes reuse one style and st
   await extension.seed(); const page = await extension.openBrowser(); await ready(page);
   const subscriptions = await page.evaluate(() => window.__storageSubscriptions.size);
   for (let i = 0; i < 4; i++) {
-    const css = `${testCss}\n/* update ${i} */`; await setCss(extension, css); await expect(style(page)).toHaveText(css);
+    const css = `${testCss}\n/* update ${i} */`; await setCss(extension, css); await expect(style(page)).toHaveJSProperty('textContent', css);
     await expect(style(page)).toHaveCount(1); await openLesson(page); await page.keyboard.press('H'); await ready(page);
     await page.keyboard.press('Escape'); await page.keyboard.press('h'); await ready(page);
     await expect(page.getByTestId('browser-location')).toContainText('University');

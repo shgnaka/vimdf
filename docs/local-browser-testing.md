@@ -1,6 +1,10 @@
 # ローカル PDF ブラウザの統合テスト契約と実機確認
 
-2026-10-10 の [一覧 UI・キー・ヘルプ・CSS 改訂](local-browser-ui.md#受け入れ条件とテスト化する項目) に UX-01〜13 の追加受け入れ条件を定義した。追加テストは作成済み、実装は未対応。以下の既存テスト成功は新しい r、一覧全状態の a、一覧ヘルプ、CSS 編集・反映、常設 UI の除去を検証した記録ではない。
+2026-10-10 の [一覧 UI・キー・ヘルプ・CSS 改訂](local-browser-ui.md#受け入れ条件とテスト化する項目) に UX-01〜13 の追加受け入れ条件を定義した。追加テストに本番実装を接続した。r、一覧全状態の a、一覧 / Viewer 別の native modal help、CSS 編集・反映、常設 UI の除去を検査する。旧コミットの検証件数と今回の検証を区別する。
+
+## 今回の実装検証
+
+`ebe955d0f6b2140799ebe032eca0ae075e53c43f` の [Node CI](https://github.com/shgnaka/vimdf/actions/runs/38056291118) と [統合契約 CI](https://github.com/shgnaka/vimdf/actions/runs/38056291149) が成功。フォルダモデルは新規 27 を含めた 111、パスワードは新規 101 を含めた 135、scroll 14、統合契約 50。Chromium は旧 45・UX 41・SEC 25 の合計 111 を実行し、最終結果を追記する。以下の赤い検証記録は過去のテスト追加時点のもの。
 
 ## UX-01〜13 の追加テスト
 
@@ -31,7 +35,7 @@
 
 本番 DOM / PDF.js / IndexedDB / storage / handles を使用し、OS picker と許可・保存障害の境界だけを制御する。CSS の見た目の固定値は初期デザインの指定ではなく、利用者が保存するテスト CSS が computed style へ反映したかの検査。初期配色・配置は確定しない。
 
-追加する accessible / 検査識別子は、ヘルプ dialog 名 `Local PDF browser keybindings` / `PDF viewer keybindings`、絞り込み textbox 名 `Filter keybindings`、フォーカス可能な scroll 要素 `data-testid="help-scroll"`。一覧ヘルプのコマンド行には共通定義から `data-command` とキー要素 `data-key` を付け、画面で利用できる操作だけ表示する。Options の CSS 要素は `customCss` / `saveCustomCss` / `resetCustomCss` / `customCssStatus`。適用 style の識別子は `data-vimdf-custom-css`。これらは本番にまだない追加接続契約であり、テスト側で模倣 UI を生成しない。
+追加する accessible / 検査識別子は、ヘルプ dialog 名 `Local PDF browser keybindings` / `PDF viewer keybindings`、絞り込み textbox 名 `Filter keybindings`、フォーカス可能な scroll 要素 `data-testid="help-scroll"`。一覧ヘルプのコマンド行には共通定義から `data-command` とキー要素 `data-key` を付け、画面で利用できる操作だけ表示する。Options の CSS 要素は `customCss` / `saveCustomCss` / `resetCustomCss` / `customCssStatus`。適用 style の識別子は `data-vimdf-custom-css`。これらは本番へ接続済みの識別子であり、テスト側で模倣 UI を生成しない。
 
 OS picker の中での Tab / Enter、ブラウザの拡張アイコン右クリック → Options は native UI の代表実機確認を維持する。パスワードの暗号化・バックアップ・平文エクスポート・復元は UX-01〜13 と区別し、[保管庫の追加テスト](pdf-password-testing.md) で SEC-01〜24 を検査する。Node 101・Chromium 25 ケースを追加し、既存 34 件のパスワードテストやこの節の旧 CI 件数に加算しない。既存の UI テストと同じ Chromium glob で実行する。
 

@@ -83,6 +83,7 @@ export function setupPasswordOptions(): void {
     bind(id, () => {
       const modal = vaultDialog(title, fields, description), active = createPasswordStore(modal.signal);
       modal.button(label, async () => {
+        vaultStatus.textContent = "Working…";
         await action(active, fields.map(f => modal.inputs.get(f)!.value));
         modal.close(); forceRender = true; await render();
       });

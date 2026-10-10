@@ -31,12 +31,19 @@ export class HelpPanel {
     if (event.isComposing) return true;
     const key = event.key;
     if (event.repeat && ["g", "?", "Escape", "Enter"].includes(key)) { event.preventDefault(); return true; }
+    if (key === "Tab") {
+      const controls = Array.from(this.dialog.querySelectorAll<HTMLElement>("input,button,[tabindex]"))
+        .filter(el => el.tabIndex >= 0 && el.getClientRects().length > 0);
+      const index = controls.indexOf(document.activeElement as HTMLElement);
+      event.preventDefault();
+      (controls[(index + (event.shiftKey ? -1 : 1) + controls.length) % controls.length] ?? this.scroll).focus();
+      return true;
+    }
     if (document.activeElement === this.input) {
       if (key === "Enter") { event.preventDefault(); this.scroll.focus(); }
       else if (key === "Escape") { event.preventDefault(); this.clearSearch(); this.scroll.focus(); }
       return true;
     }
-    if (key === "Tab") return true;
     if (event.altKey || event.metaKey || (event.ctrlKey && !["d", "u", "f", "b"].includes(key.toLowerCase()))) return true;
     event.preventDefault();
     if (key === "Escape") { if (this.searching) { this.clearSearch(); this.scroll.focus(); } else this.close(); return true; }

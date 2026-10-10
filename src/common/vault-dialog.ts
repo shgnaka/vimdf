@@ -5,6 +5,9 @@ export function vaultDialog(title: string, fields: string[], description = "") {
   const dialog = document.createElement("dialog"); dialog.className = "password-dialog";
   dialog.setAttribute("aria-label", title);
   const form = document.createElement("form"), heading = document.createElement("h2"); heading.textContent = title;
+  // Restore clears authenticated inputs before confirmation. Validation lives
+  // at the operation boundary, rather than blocking its confirmation submit.
+  form.noValidate = true;
   form.append(heading);
   if (description) { const p = document.createElement("p"); p.textContent = description; form.append(p); }
   const inputs = new Map<string, HTMLInputElement>();

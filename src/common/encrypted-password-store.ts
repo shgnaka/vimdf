@@ -50,7 +50,10 @@ function envelope(value: unknown): Envelope {
       e.cipher.name !== "AES-GCM" || e.cipher.length !== 256 || e.cipher.tagLength !== 128 ||
       binary(e.kdf.salt).length < 16 || binary(e.kdf.salt).length > 64 || binary(e.cipher.iv).length !== 12 ||
       binary(e.ciphertext).length < 16 || encode(JSON.stringify(e)).length > PASSWORD_VAULT_POLICY.maxImportBytes) throw invalid();
-  return structuredClone(e);
+  // Chrome storage may reorder object properties. Wire order is not identity.
+  return { format: e.format, version: e.version,
+    kdf: { name: e.kdf.name, hash: e.kdf.hash, iterations: e.kdf.iterations, salt: e.kdf.salt },
+    cipher: { name: e.cipher.name, length: e.cipher.length, tagLength: e.cipher.tagLength, iv: e.cipher.iv }, ciphertext: e.ciphertext };
 }
 function payload(value: unknown): PasswordVault {
   if (!fields(value, ["version", "autoFill", "records", "remembered"])) throw invalid();
@@ -65,9 +68,12 @@ function payload(value: unknown): PasswordVault {
   }
   if (!Object.values(v.remembered).every(id => typeof id === "string" && ids.has(id)) ||
       encode(JSON.stringify(v)).length > PASSWORD_VAULT_POLICY.maxPlaintextBytes) throw invalid();
-  return structuredClone(v);
+  return { version: 1, autoFill: v.autoFill,
+    records: v.records.map(({ id, name, password, enabled, shared }) => ({ id, name, password, enabled, shared })),
+    remembered: Object.fromEntries(Object.entries(v.remembered).sort(([a], [b]) => a < b ? -1 : a > b ? 1 : 0)) };
 }
 const signature = (e: Envelope): string => JSON.stringify(e.kdf);
+const generation = (value: unknown): string => value === undefined ? "absent" : JSON.stringify(envelope(value));
 const aad = (e: Envelope): Uint8Array<ArrayBuffer> => encode(JSON.stringify([e.format, e.version,
   e.kdf.name, e.kdf.hash, e.kdf.iterations, e.kdf.salt, e.cipher.name, e.cipher.length, e.cipher.tagLength, e.cipher.iv]));
 
@@ -179,7 +185,7 @@ export class EncryptedPasswordStore implements PasswordStore {
   async unlock(master: string): Promise<void> {
     this.assertActive(); const epoch = this.session.epoch, d = await this.data(), e = this.current(d);
     const key = await this.derive(master, e); await this.decrypt(e, key); this.guard(epoch);
-    if (JSON.stringify((await this.data())[V2]) !== JSON.stringify(e)) throw new Error("Password vault changed; authenticate again");
+    if (generation((await this.data())[V2]) !== JSON.stringify(e)) throw new Error("Password vault changed; authenticate again");
     this.guard(epoch); this.enable(key, e);
   }
   private async access(d?: Record<string, unknown>): Promise<{ envelope: Envelope; key: CryptoKey }> {
@@ -242,7 +248,7 @@ export class EncryptedPasswordStore implements PasswordStore {
   async authorizePlaintext(master: string): Promise<string> {
     this.assertActive(); const epoch = this.session.epoch, d = await this.data(), e = this.current(d);
     const v = await this.decrypt(e, await this.derive(master, e)); this.guard(epoch);
-    if (JSON.stringify((await this.data())[V2]) !== JSON.stringify(e)) throw new Error("Password vault changed; authenticate again");
+    if (generation((await this.data())[V2]) !== JSON.stringify(e)) throw new Error("Password vault changed; authenticate again");
     this.guard(epoch); return this.ticket({ kind: "plain", generation: JSON.stringify(e), payload: v });
   }
   async exportPlaintext(token: string, options: { confirmed: boolean; signal?: AbortSignal }): Promise<{ text: string; filename: string; mimeType: string }> {
@@ -259,7 +265,7 @@ export class EncryptedPasswordStore implements PasswordStore {
     const d = await this.data(); if (d[V1] !== undefined) throw new Error("Finish migrating or reset the password vault first");
     if (d[V2] !== undefined) await this.access(d);
     const v = await this.decrypt(e, await this.derive(master, e)); this.guard(epoch);
-    return { token: this.ticket({ kind: "restore", envelope: e, generation: JSON.stringify(d[V2]) }),
+    return { token: this.ticket({ kind: "restore", envelope: e, generation: generation(d[V2]) }),
       preview: { recordCount: v.records.length, replacesExisting: d[V2] !== undefined } };
   }
   async discardPrepared(token: string): Promise<void> { this.tickets.delete(token); }
@@ -267,7 +273,7 @@ export class EncryptedPasswordStore implements PasswordStore {
     const t = this.take(token, "restore", options.confirmed);
     await this.options.withLock(async () => {
       const d = await this.data(); this.guard(t.epoch);
-      if (d[V1] !== undefined || JSON.stringify(d[V2]) !== t.generation) throw new Error("Password vault changed; validate the backup again");
+      if (d[V1] !== undefined || generation(d[V2]) !== t.generation) throw new Error("Password vault changed; validate the backup again");
       if (d[V2] !== undefined) await this.access(d);
       this.guard(t.epoch); await this.write(t.envelope!); this.invalidateAll();
     });

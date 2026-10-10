@@ -40,7 +40,10 @@ export function showPasswordPrompt(info: { incorrect: boolean; signal: AbortSign
       const modal = vaultDialog("Unlock password vault", ["Master password"]);
       const active = createPasswordStore(modal.signal);
       const abort = () => modal.close(); info.signal.addEventListener("abort", abort, { once: true });
-      modal.signal.addEventListener("abort", () => { info.signal.removeEventListener("abort", abort); if (password.isConnected) password.focus(); });
+      modal.signal.addEventListener("abort", () => {
+        info.signal.removeEventListener("abort", abort);
+        queueMicrotask(() => { if (password.isConnected) password.focus(); });
+      });
       modal.button("Unlock", async () => {
         await active.unlock(modal.inputs.get("Master password")!.value);
         modal.close(); finish({ password: "", name: "", shared: false, remember: false, retrySaved: true });

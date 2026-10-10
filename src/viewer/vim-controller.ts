@@ -35,6 +35,7 @@ export class VimController {
   private attached = false;
   private readonly help = new HelpPanel(document.getElementById("help") as HTMLDialogElement, () => {
     this.pendingG = this.pendingZ = this.pendingOutlineG = false;
+    this.pendingCount = ""; this.pendingMark = null;
   });
   private listeners = new AbortController();
 

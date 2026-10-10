@@ -1,6 +1,6 @@
 # PDF パスワード保管庫の追加テスト
 
-更新日：2026-10-10。[保管庫の要件と仕様](pdf-password-protection.md) の SEC-01〜24 に対するテストを追加した。これはテスト作成と接続契約の記録であり、暗号化保管が実装済み・安全性検証済みという意味ではない。本番は現在も平文保存。テスト内に保管庫の代替実装を作らず、本番モジュール、本番 Options / Viewer / PDF.js を呼ぶ。未実装の API・DOM は通常の失敗で検出し、skip / todo / 期待失敗にしない。
+更新日：2026-10-10。[保管庫の要件と仕様](pdf-password-protection.md) の SEC-01〜24 に対するテストを追加した。本番の暗号化 store、共通 Options と PDF ダイアログを接続した。暗号化の安全性全体を保証する監査とは区別し、ここでは要件に対する検査の範囲と実行結果を記録する。テスト内に保管庫の代替実装を作らず、本番モジュール、本番 Options / Viewer / PDF.js を呼ぶ。未実装の API・DOM は通常の失敗で検出し、skip / todo / 期待失敗にしない。
 
 ## ファイルと実行
 
@@ -21,7 +21,7 @@ npm run build
 npx playwright test --config=playwright.local.config.mjs password-vault.spec.mjs
 ```
 
-Node の契約ケースは 10 秒、実 PDF.js は 10〜15 秒、Chromium は既存の 20 秒・操作待ち 5 秒を使う。未確定の自動ロック時間をテストで製品の固定値にせず、Node のテスト用時計と 1,000 ms の注入値で境界を検査する。解錠共有の実装方式は固定しないが、マスター変更・復元・初期化で旧セッションが無効になることを要求する。
+Node の契約ケースは 10 秒、実 PDF.js は 10〜15 秒、Chromium は既存の 20 秒・操作待ち 5 秒を使う。自動ロック時間をテストで製品の固定値にせず、Node のテスト用時計と 1,000 ms の注入値で境界を検査する。解錠共有の実装方式は固定しないが、マスター変更・復元・初期化で旧セッションが無効になることを要求する。
 
 ## 暗号化形式と独立した復号検証
 
@@ -68,9 +68,9 @@ AAD は次の配列を `JSON.stringify` した文字列の UTF-8 バイト列と
 | `restore(token,{confirmed})` / `discardPrepared(token)` | 世代確認後の復元 / 準備結果の取消。成功後ロックし、失敗時は旧保管庫を保持 |
 | `changeMasterPassword(old,new,confirmation)` / `migrate(master,confirmation)` / `reset({confirmed})` | マスター変更 / v1 移行 / 保管庫だけの初期化 |
 
-政策値は `idleTimeoutMs,minMasterLength,maxImportBytes,maxPlaintextBytes,minKdfIterations,maxKdfIterations`。正の安全な整数、KDF は 600,000 回以上の下限と有限の上限を要求する。最終の時間・長さ・負荷・サイズの数値は未確定のままにし、変更してもテストが固定候補値を強制しないようにする。
+政策値は `idleTimeoutMs,minMasterLength,maxImportBytes,maxPlaintextBytes,minKdfIterations,maxKdfIterations`。正の安全な整数、KDF は 600,000 回以上の下限と有限の上限を要求する。初版の政策値は 15 分、12 文字、入力 2 MiB・復号内容 1 MiB、KDF 600,000〜2,000,000 回。変更してもテストが固定候補値を強制しない。
 
-公開メソッドの非同期結果はロック・取消・世代変更の影響を受ける。準備結果は生成した実行コンテキストと検証済み世代に結び付け、別コンテキストでの流用・再実行を拒否する。テストは保管庫の代替クラスを提供しないため、この本番 API がない現状では API 検査が通常の失敗になる。
+公開メソッドの非同期結果はロック・取消・世代変更の影響を受ける。準備結果は生成した実行コンテキストと検証済み世代に結び付け、別コンテキストでの流用・再実行を拒否する。テストは保管庫の代替クラスを提供しないため、本番 API の接続・内容・失敗処理を直接検査する。
 
 ## 本番画面への接続契約
 
@@ -115,17 +115,8 @@ PDF の手入力 dialog に `Unlock vault` を用意し、解錠成功後は実�
 
 ## 検証記録
 
-検証コミットは `3eae5f26d0fa6e948bdbef338fa7ef5c2fbe4c69`。CI の checkout がこの head を main へマージしたものと確認し、単に最新 run の表示だけで結果を判断していない。本番ソースは変更していない。
+実装の初回コミット `ebe955d0f6b2140799ebe032eca0ae075e53c43f` で、[Node CI](https://github.com/shgnaka/vimdf/actions/runs/38056291118) と [統合契約 CI](https://github.com/shgnaka/vimdf/actions/runs/38056291149) が成功。パスワード 135（新規 101・既存 34）、フォルダモデル 111（新規 27・既存 84）、スクロール 14、統合契約 50、型検査・build を確認した。Chromium 111 ケースの最終結果は後続の記録に追記する。
 
-| 範囲 | 結果 | 根拠 |
-| --- | --- | --- |
-| 新規 Node 101 | 3 成功・98 失敗 | ローカルの通常 TAP と [Node CI](https://github.com/shgnaka/vimdf/actions/runs/38047397107)。成功は独立 oracle 2 件と実非暗号化 PDF 1 件。失敗は暗号化 store / policy / factory の不足 |
-| 旧パスワード 34 | 全件成功 | 同じ Node CI は合計 135、37 成功・98 失敗。追加条件と旧機能を区別 |
-| 新規 Chromium 25 | 1 成功・24 失敗 | [Chromium / 統合契約 CI](https://github.com/shgnaka/vimdf/actions/runs/38047397101)。成功は非暗号化 PDF、失敗は保管庫状態・操作・ダイアログ等の不足 |
-| Chromium 全体 111 | 53 成功・58 失敗 | 旧成功済み 45 は全件成功。以前追加した UX suite は 7 成功・34 失敗で、今回の保管庫 1 成功・24 失敗と区別 |
-| 既存モデル 84・scroll 14 | 全件成功 | 同一ソースに対するローカル TAP。Node CI は新規パスワードの失敗後にこの step を実行しないため、CI で実行済みと書かない |
-| 統合契約 50・型検査・build | 全件成功 | 上記 CI の contracts job とローカル結果 |
+以前のテスト追加時点 `3eae5f26d0fa6e948bdbef338fa7ef5c2fbe4c69` は新規 126 が 4 成功・122 失敗で、暗号化 store と画面不足を通常の失敗として検出していた。この実装でテストを skip / todo / 期待失敗へ変更していない。独立 oracle 2 件、実非暗号化 PDF 2 件だけの成功を暗号化の実装成功として数えない。
 
-既存 227 ケースは成功、新規 126 は 4 成功・122 失敗。失敗を skip / todo / 期待失敗へ変えていない。4 件の成功は暗号化保管の実装成功を示さない。全 Chromium の失敗一覧が UX suite と新しい保管庫 suite だけに属し、以前成功していた 45 件に回帰がないことを確認した。
-
-ローカルに Chromium 実行ファイルがないため、構文・収集の確認と上記 CI の実画面試験を区別する。CI は本番 DOM / Chrome storage / native IDB / OPFS / PDF.js を使用し、picker・incognito・I/O 障害等の境界だけを制御する。ダウンロード・復元等の深い検査は、現在欠けている操作 UI を実装した後に到達する条件であり、今の失敗だけでその深い処理を実行済みとしない。
+ローカルの Chromium ダウンロードは失敗したため、構文・収集・Node・build の確認と CI の実画面試験を区別する。CI は本番 DOM / Chrome storage / native IDB / OPFS / PDF.js を使用し、picker・incognito・I/O 障害等の境界だけを制御する。native clipboard、実 incognito プロファイル、OS picker 等は上記の実機確認範囲。

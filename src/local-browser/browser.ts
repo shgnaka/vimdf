@@ -62,6 +62,7 @@ async function openPdf(file: File, identity: string) {
 function announceStale() { stale = true; document.querySelector<HTMLElement>('[data-testid="registry-stale"]')!.hidden = false; render(); }
 function render() {
   const mode = pdf?.mode ?? "files";
+  if (mode !== "files" && help.dialog.open) help.close();
   root.dataset.mode = mode;
   root.dataset.view = session?.view ?? "empty";
   root.dataset.busy = String(!ready || checking || !!session?.busy || mode === "loading-pdf");
