@@ -8,13 +8,15 @@ Vim のバッファ一覧とステータス行を参考にする。等幅文字�
 
 画面・設定節の名称は機能を示す File browser、起動ボタンは Open file browser。一覧ヘルプの見出しと accessible name は File browser keybindings とし、Viewer の既存 VimDF — Keybindings と区別する。タブタイトルは File browser — VimDF。Local PDFs / Local PDF browser を画面名として使わない。Vimium C 用の表示説明は VimDF files。内部の URL、DOM ID、保存キー、外部起動メッセージ vimdf.openLocalBrowser は互換性のため維持する。
 
+ファイル選択と登録一覧は名前の左にフォルダ / PDF ファイルの線画アイコンを表示する。Type の見出し・列と Folder / PDF の補助文字列を表示しない。登録一覧ではフォルダアイコンと Default・個別解除操作を保持する。アイコンは基準文字サイズの 1.25 倍で --vimdf-accent を継承し、外部画像や絵文字フォントに依存しない。行の accessible name は名前と同名識別 ID を維持し、accessible description で Folder / PDF を伝える。アイコン自体は読み上げと Tab の対象にせず、クリックは行選択として扱う。
+
 Registered folders と Add folder はキー操作と同じ機能を持つ小さな文字ボタンとして初期状態で表示し、共通 Options から個別に非表示にできる。マウス利用と Tab によるフォーカスを維持し、大きなツールバーにしない。登録解除や再許可の既存ボタンも維持する。[デザイン案](local-browser-design.md) に単一一覧、文字サイズ、余白、初期配色、全画面・例外状態の見本を具体化した。見本全体の利用者確認は未完了。以下の文字サイズ統一とボタン表示設定は利用者の指定に基づく実装要件である。
 
 設定は拡張機能共通の既存 Options ページを使う。ピンした拡張アイコンの右クリック → オプション、またはブラウザの拡張管理画面から開く。既存のアイコン左クリックはローカル一覧を開く動作を維持する。設定ページを開くための一覧内ボタンや新しいショートカットは追加しない。
 
 ## 文字サイズとボタン表示設定
 
-ターミナルらしさは文字サイズを統一することで表現する。一覧の標準は 13 px の system monospace。ファイル / 登録名、現在位置、Type / Default / 同名識別 ID、状態・件数、入力・入力モード、ボタン、説明・エラー・競合通知、登録解除確認、一覧ヘルプの見出し・キー・説明・検索入力を同じサイズにする。狭い幅や Dark / Light / Auto でも文字サイズを変えない。重要度は色・太さ・余白・枠で表し、見出しやエラーだけを拡大しない。追加 Web フォントは使わない。Custom CSS で .vimdf-browser の基準サイズを変えた場合も各部分が継承する。既存 Viewer の文字サイズ・ステータス行の設定と Options の外観は維持する。
+ターミナルらしさは文字サイズを統一することで表現する。一覧の標準は 13 px の system monospace。ファイル / 登録名、現在位置、Default / 同名識別 ID、状態・件数、入力・入力モード、ボタン、説明・エラー・競合通知、登録解除確認、一覧ヘルプの見出し・キー・説明・検索入力を同じサイズにする。狭い幅や Dark / Light / Auto でも文字サイズを変えない。重要度は色・太さ・余白・枠で表し、見出しやエラーだけを拡大しない。追加 Web フォントは使わない。Custom CSS で .vimdf-browser の基準サイズを変えた場合も各部分が継承する。既存 Viewer の文字サイズ・ステータス行の設定と Options の外観は維持する。
 
 Options の File browser 節に Folder buttons を置き、Show Registered folders button と Show Add folder button を独立したチェック項目にする。保存キーは showRegisteredFoldersButton / showAddFolderButton、boolean、初期値はともに true。未保存の旧プロフィール、boolean 以外の不正値も表示として読み込む。既存の一般設定と同じ chrome.storage.sync に即時保存し、成功した変更を開いている一覧へ反映、再起動時に復元する。Reset to defaults は両方を表示へ戻す。Custom CSS、登録 handle、PDF データ、保管庫の保存先・初期化対象は変えない。
 
@@ -154,6 +156,7 @@ CSS は chrome.storage.local の独立したキー vimdf.customCss.v1 に {versi
 | UX-14 | 一覧の全表示文字・入力・ヘルプ・解除確認が基準の 13 px 等幅。テーマ・狭い幅・説明 / エラー / 非対応状態・同名 ID と CSS による基準サイズ変更を検査し、Viewer / Options の外観を維持 |
 | UX-15 | 両ボタンの初期表示、旧設定の復元、独立した Options 保存・再読込・ライブ反映・既定への初期化を検査。非表示時も r / a / ? が有効で Tab は除外。位置・入力・modal / PDF のフォーカスと登録・PDF データ・CSS を保持 |
 | UX-16 | 一覧上部にタイトル見出しがなく、現在位置はステータス行に残り、子フォルダ・登録一覧・取消で更新される。両操作を隠した場合は空の見出し枠も隠す。File browser のタブ・設定・起動・一覧ヘルプの名称を揃え、Viewer の VimDF — Keybindings を維持 |
+| UX-17 | ファイル選択・登録一覧から Type 見出しと種類の文字列を除去。フォルダ / PDF ファイルのアイコンを形状で区別し、名前・読み上げ用種類・アイコンからのクリック選択とキー確定を維持。登録一覧の Default / 解除操作を保持 |
 
 モデルで r / a の状態遷移と取消を検査し、本番の拡張画面を動かす Chromium テストでフォーカス、排他表示、キー配送、computed style、保存後の反映を検査する。見た目の色やピクセル位置を固定値で決めつけず、公開変数への変更結果と操作の契約を調べる。OS picker のキーボード操作とブラウザ側のオプション導線は代表環境で確認する。
 

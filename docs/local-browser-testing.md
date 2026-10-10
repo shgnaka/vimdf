@@ -2,6 +2,10 @@
 
 2026-10-10 の [一覧 UI・キー・ヘルプ・CSS 改訂](local-browser-ui.md#受け入れ条件とテスト化する項目) に UX-01〜13 の追加受け入れ条件を定義した。追加テストに本番実装を接続した。r、一覧全状態の a、一覧 / Viewer 別の native modal help、CSS 編集・反映、常設 UI の除去を検査する。旧コミットの検証件数と今回の検証を区別する。
 
+## UX-17 のアイコン・Type 列改訂
+
+`tests/browser/local-browser-ui.spec.mjs` に 1 ケース追加。Type 列の除去、フォルダ / PDF ファイルアイコンの表示と寸法、行の accessible name / description、アイコンからのクリック選択と Enter による子フォルダ移動を検査する。登録一覧の全行がフォルダアイコンで Default / 個別解除を維持し、キーでプライマリーを切り替えられることも検査する。既存の文字サイズ・CSS・キー・権限・狭い幅の回帰試験を併せて実行する。実行結果は検証後に追記する。
+
 ## UX-14 / 15 の追加テスト
 
 全表示文字の同一サイズと両ボタンの表示設定は [改訂仕様](local-browser-ui.md#文字サイズとボタン表示設定) に定義する。tests/browser/local-browser-appearance.spec.mjs に 18 ケースを追加。Dark / Light / Auto × 960 / 320 px の 6 ケースでファイル名・見出し・補助情報・同名 ID・入力・一覧ヘルプ・解除確認を実際の computed style で検査する。未登録・権限・エラー・API 非対応の説明、CSS による基準文字サイズ変更と Viewer / Options の維持も検査する。

@@ -67,6 +67,37 @@ test('[UX-16] File browser labels and help distinguish selection from the unchan
   await expect(help(page)).toBeHidden();
 });
 
+test('[UX-17] folder/PDF icons replace Type in files and roots while preserving names, descriptions and keyboard selection', async ({ extension }) => {
+  await extension.seed(); const page = await extension.openBrowser(); await ready(page);
+  await expect(page.locator('#files .list-labels')).toHaveText('Name');
+  await expect(page.locator('#files .row-kind')).toHaveCount(0);
+  const folder = page.getByRole('option', { name: 'course', exact: true });
+  const pdf = page.getByRole('option', { name: 'z.pdf', exact: true });
+  await expect(folder).toHaveText('course'); await expect(pdf).toHaveText('z.pdf');
+  await expect(folder).toHaveAccessibleDescription('Folder'); await expect(pdf).toHaveAccessibleDescription('PDF');
+  for (const [row, kind] of [[folder, 'folder'], [pdf, 'pdf']]) {
+    const icon = row.locator(`svg.row-icon[data-kind="${kind}"]`);
+    await expect(icon).toBeVisible(); await expect(icon).toHaveAttribute('aria-hidden', 'true');
+    expect(await icon.evaluate(el => ({ width: el.getBoundingClientRect().width, height: el.getBoundingClientRect().height })))
+      .toEqual({ width: 16.25, height: 16.25 });
+    expect(await icon.locator('path').count()).toBeGreaterThan(0);
+  }
+  await folder.locator('.row-icon').click(); await expect(folder).toHaveAttribute('aria-selected', 'true');
+  await expect(page.getByRole('listbox')).toBeFocused();
+  await page.keyboard.press('Enter'); await ready(page);
+  await expect(page.getByTestId('browser-location')).toContainText('course');
+  await expect(page.getByRole('option', { name: 'lesson.pdf', exact: true })).toHaveAccessibleDescription('PDF');
+  await page.keyboard.press('r'); await expect(screen(page)).toHaveAttribute('data-view', 'roots');
+  await expect(page.locator('#files .row-kind')).toHaveCount(0);
+  await expect(page.locator('#browser-list svg[data-kind="folder"]')).toHaveCount(2);
+  await expect(page.locator('#browser-list svg[data-kind="pdf"]')).toHaveCount(0);
+  await expect(selected(page)).toContainText('Default');
+  await expect(page.getByRole('button', { name: 'Unregister Books', exact: true })).toBeVisible();
+  await page.keyboard.press('j'); await page.keyboard.press('Enter'); await ready(page);
+  await expect(page.getByTestId('browser-location')).toHaveText('Books');
+  expect((await extension.registry()).primaryId).toBe(rootB);
+});
+
 test('[UX-01] normal list removes branding/settings/hints and hides filter from Tab', async ({ extension }) => {
   await extension.seed(); const page = await extension.openBrowser(); await ready(page);
   await expect(page.locator('#files .wordmark')).toHaveCount(0);

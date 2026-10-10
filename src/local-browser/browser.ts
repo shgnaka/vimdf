@@ -42,6 +42,21 @@ function toggleHelp() {
   help.toggle();
 }
 
+function createRowIcon(directory: boolean) {
+  const svg = document.createElementNS("http://www.w3.org/2000/svg", "svg");
+  svg.classList.add("row-icon");
+  svg.dataset.kind = directory ? "folder" : "pdf";
+  for (const [name, value] of Object.entries({ viewBox: "0 0 24 24", fill: "none", stroke: "currentColor",
+    "stroke-width": "2", "stroke-linecap": "round", "stroke-linejoin": "round", "aria-hidden": "true", focusable: "false" })) svg.setAttribute(name, value);
+  const paths = directory
+    ? ["M3 5a2 2 0 0 1 2-2h5l2 3h7a2 2 0 0 1 2 2v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2Z"]
+    : ["M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8Z", "M14 2v6h6", "M8 13h8M8 17h6"];
+  for (const d of paths) {
+    const path = document.createElementNS(svg.namespaceURI, "path"); path.setAttribute("d", d); svg.append(path);
+  }
+  return svg;
+}
+
 function showError(reason: unknown) {
   if ((reason as { code?: string })?.code === "storage-conflict") announceStale();
   root.hidden = false;
@@ -114,7 +129,8 @@ function render() {
     row.setAttribute("aria-selected", String(index === session!.selectedIndex));
     const isRoot = "id" in entry;
     const directory = isRoot || entry.kind === "directory";
-    const icon = document.createElement("span"); icon.className = "row-icon"; icon.setAttribute("aria-hidden", "true"); icon.textContent = directory ? "▱" : "▤";
+    row.setAttribute("aria-description", directory ? "Folder" : "PDF");
+    const icon = createRowIcon(directory);
     const name = document.createElement("span"); name.className = "row-name"; name.textContent = entry.name;
     if (isRoot && session!.entries.some(other => "id" in other && other.id !== entry.id && other.name === entry.name)) {
       let length = Math.min(8, entry.id.length);
@@ -122,8 +138,7 @@ function render() {
       const id = document.createElement("small"); id.className = "row-primary"; id.textContent = ` · ${entry.id.slice(0, length)}`; name.append(id);
       row.setAttribute("aria-label", `${entry.name} ${entry.id.slice(0, length)}`);
     }
-    const kind = document.createElement("span"); kind.className = "row-kind"; kind.textContent = directory ? "Folder" : "PDF";
-    row.append(icon, name, kind);
+    row.append(icon, name);
     if (isRoot) {
       if (entry.isPrimary) { const badge = document.createElement("span"); badge.className = "row-primary"; badge.textContent = "Default"; row.append(badge); }
       const remove = document.createElement("button"); remove.type = "button"; remove.className = "row-remove"; remove.textContent = "Remove";

@@ -20,14 +20,14 @@ button:focus-visible, input:focus-visible { outline: 2px solid var(--accent); ou
 .browser-search input { min-width: 0; flex: 1; background: transparent; color: var(--fg); border: 0; outline: 0; font: inherit; }
 #filter-mode { color: var(--bar-fg); font-size: inherit; letter-spacing: 1px; }
 .list-labels, .browser-row { display: flex; align-items: center; gap: 16px; }
-.list-labels { padding: 22px 16px 12px; color: var(--bar-fg); font-size: inherit; border-bottom: 1px solid var(--page-border); justify-content: space-between; }
+.list-labels { padding: 22px 16px 12px; color: var(--bar-fg); font-size: inherit; border-bottom: 1px solid var(--page-border); }
 #browser-list { outline: none; padding: 6px 0; }
 .browser-row { min-height: 54px; padding: 12px 16px; border-radius: 6px; cursor: pointer; }
 .browser-row[aria-selected="true"] { background: var(--bar-bg); box-shadow: inset 3px 0 var(--accent); }
 .browser-row:hover { background: var(--bar-bg); }
-.row-icon { color: var(--accent); width: 20px; flex-shrink: 0; font-size: inherit; }
+.row-icon { color: var(--accent); width: 1.25em; height: 1.25em; flex-shrink: 0; }
 .row-name { flex: 1; overflow-wrap: anywhere; }
-.row-kind, .row-primary { color: var(--bar-fg); font-size: inherit; }
+.row-primary { color: var(--bar-fg); font-size: inherit; }
 .row-remove { padding: 4px 8px; font-size: inherit; }
 .browser-footer { padding: 14px 36px; background: var(--bar-bg); color: var(--bar-fg); display: flex; gap: 16px; justify-content: space-between; font-size: inherit; }
 kbd { border: 1px solid var(--page-border); padding: 1px 4px; border-radius: 3px; font-size: 10px; }
@@ -51,7 +51,8 @@ h1 { font-size: 15px; font-weight: normal; margin: 0; }
 .browser-row[aria-selected="true"] { background: var(--vimdf-selection-bg); color: var(--vimdf-selection-fg); box-shadow: inset 3px 0 var(--vimdf-accent); }
 .browser-actions button { padding: 3px 8px; border-radius: 0; background: transparent; color: var(--vimdf-fg); }
 .row-icon { color: var(--vimdf-accent); }
-.row-kind, .row-primary, .list-labels { color: var(--vimdf-muted-fg); }
+.row-primary, .list-labels { color: var(--vimdf-muted-fg); }
+.list-labels { padding-left: calc(12px + 1.25em + 16px); }
 .browser-footer { padding: 5px 12px; background: var(--vimdf-status-bg); color: var(--vimdf-status-fg); }
 .browser-search { position: absolute; bottom: 28px; left: 0; right: 0; padding: 6px 12px; margin: 0; border: 0; border-radius: 0; background: var(--vimdf-bg); }
 .browser-search input { color: var(--vimdf-fg); }
