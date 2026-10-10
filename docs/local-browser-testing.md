@@ -4,7 +4,9 @@
 
 ## UX-17 のアイコン・Type 列改訂
 
-`tests/browser/local-browser-ui.spec.mjs` に 1 ケース追加。Type 列の除去、フォルダ / PDF ファイルアイコンの表示と寸法、行の accessible name / description、アイコンからのクリック選択と Enter による子フォルダ移動を検査する。登録一覧の全行がフォルダアイコンで Default / 個別解除を維持し、キーでプライマリーを切り替えられることも検査する。既存の文字サイズ・CSS・キー・権限・狭い幅の回帰試験を併せて実行する。実行結果は検証後に追記する。
+`tests/browser/local-browser-ui.spec.mjs` に 1 ケース追加。Type 列の除去、フォルダ / PDF ファイルアイコンの表示と寸法、行の accessible name / description、アイコンからのクリック選択と Enter による子フォルダ移動を検査する。登録一覧の全行がフォルダアイコンで Default / 個別解除を維持し、キーでプライマリーを切り替えられることも検査する。既存の文字サイズ・CSS・キー・権限・狭い幅の回帰試験を併せて実行する。
+
+`2a581009667e852bc0237befee65eb7157d95238` の [Node・ビルド CI](https://github.com/shgnaka/vimdf/actions/runs/38069563935) と [Chromium・統合契約 CI](https://github.com/shgnaka/vimdf/actions/runs/38069563927) が全件成功。Node 312、Chromium 132、計 444 ケース。追加 UX-17、型検査・production build を含み、skip / todo / 期待失敗なし。ローカルでも型検査・build と関連 Node 161 ケースが成功。Viewer / Options のソースは今回の変更対象に含まれない。この実行記録の追記は文書のみで、本番ソース・テストは検証コミットと同一。以下は以前の改訂の検証記録。
 
 ## UX-14 / 15 の追加テスト
 
