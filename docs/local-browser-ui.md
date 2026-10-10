@@ -1,6 +1,6 @@
 # ローカル PDF 一覧の表示・キー操作・ヘルプ・CSS 設定
 
-整理日：2026-10-10。対象はフォルダ / PDF を選ぶ一覧画面、登録フォルダ一覧、両画面のヘルプと共通設定。この文書はデザイン検討で決まった追加要件であり、追加自動テストと本番実装を接続した。既存のテスト成功は追加要件の成功を意味しない。登録と保存の契約は [基本仕様](vimium-local-browser.md)、[フォルダ管理](local-folder-management.md)、[統合仕様](local-browser-integration.md) を継承する。表示・追加キー・ヘルプ・CSS の改訂についてはこの文書を優先する。
+整理日：2026-10-11。対象はフォルダ / PDF を選ぶ一覧画面、登録フォルダ一覧、両画面のヘルプと共通設定。この文書はデザイン検討で決まった追加要件であり、追加自動テストと本番実装を接続した。既存のテスト成功は追加要件の成功を意味しない。登録と保存の契約は [基本仕様](vimium-local-browser.md)、[フォルダ管理](local-folder-management.md)、[統合仕様](local-browser-integration.md) を継承する。表示・追加キー・ヘルプ・CSS の改訂についてはこの文書を優先する。
 
 ## 決定した表示方針
 
@@ -14,7 +14,7 @@ Registered folders と Add folder はキー操作と同じ機能を持つ小さ�
 
 ## 文字サイズとボタン表示設定
 
-ターミナルらしさは文字サイズを統一することで表現する。一覧の標準は 13 px の system monospace。ファイル / 登録名、現在位置の見出し、Type / Default / 同名識別 ID、状態・件数、入力・入力モード、ボタン、説明・エラー・競合通知、登録解除確認、一覧ヘルプの見出し・キー・説明・検索入力を同じサイズにする。狭い幅や Dark / Light / Auto でも文字サイズを変えない。重要度は色・太さ・余白・枠で表し、見出しやエラーだけを拡大しない。追加 Web フォントは使わない。Custom CSS で .vimdf-browser の基準サイズを変えた場合も各部分が継承する。既存 Viewer の文字サイズ・ステータス行の設定と Options の外観は維持する。
+ターミナルらしさは文字サイズを統一することで表現する。一覧の標準は 13 px の system monospace。ファイル / 登録名、現在位置、Type / Default / 同名識別 ID、状態・件数、入力・入力モード、ボタン、説明・エラー・競合通知、登録解除確認、一覧ヘルプの見出し・キー・説明・検索入力を同じサイズにする。狭い幅や Dark / Light / Auto でも文字サイズを変えない。重要度は色・太さ・余白・枠で表し、見出しやエラーだけを拡大しない。追加 Web フォントは使わない。Custom CSS で .vimdf-browser の基準サイズを変えた場合も各部分が継承する。既存 Viewer の文字サイズ・ステータス行の設定と Options の外観は維持する。
 
 Options の File browser 節に Folder buttons を置き、Show Registered folders button と Show Add folder button を独立したチェック項目にする。保存キーは showRegisteredFoldersButton / showAddFolderButton、boolean、初期値はともに true。未保存の旧プロフィール、boolean 以外の不正値も表示として読み込む。既存の一般設定と同じ chrome.storage.sync に即時保存し、成功した変更を開いている一覧へ反映、再起動時に復元する。Reset to defaults は両方を表示へ戻す。Custom CSS、登録 handle、PDF データ、保管庫の保存先・初期化対象は変えない。
 

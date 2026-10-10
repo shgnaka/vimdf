@@ -16,7 +16,7 @@ async function snapshot(page) {
     focus: document.activeElement.id || document.activeElement.getAttribute('data-testid'),
   }));
 }
-async function sameSize(page, size = '13px') {
+async function sameSize(page, size = '13px', minimumText = 3) {
   // Read rendered text and controls in the production DOM, including dynamically
   // generated metadata, modal titles, empty-result messages and input values.
   const typography = await page.locator('#files').evaluate(root => {
@@ -30,7 +30,7 @@ async function sameSize(page, size = '13px') {
       .map(el => ({ text: el.textContent.trim().slice(0, 80) || el.getAttribute('aria-label'),
         size: getComputedStyle(el).fontSize, family: getComputedStyle(el).fontFamily }));
   });
-  expect(typography.length).toBeGreaterThan(2);
+  expect(typography.length).toBeGreaterThanOrEqual(minimumText);
   expect(typography.filter(text => text.size !== size)).toEqual([]);
   expect(typography.filter(text => !text.family.includes('monospace'))).toEqual([]);
 }
@@ -73,7 +73,13 @@ for (const view of ['empty', 'permission', 'error', 'unsupported']) {
     } else if (view === 'unsupported') await expect(page.locator('#browser-fallback')).toBeVisible();
     else await expect(screen(page)).toHaveAttribute('data-view', view);
     await expect(page.locator(view === 'error' ? '#browser-error' : view === 'unsupported' ? '#browser-fallback' : '#browser-message')).toBeVisible();
-    await sameSize(page);
+    if (view === 'unsupported') {
+      await expect(page.locator('#browser-fallback p')).toBeVisible();
+      await expect(page.getByRole('button', { name: 'Open PDF file', exact: true })).toBeEnabled();
+    }
+    // Without the removed page heading, the fallback has only its explanation
+    // and recovery button. Both still participate in the same-size assertion.
+    await sameSize(page, '13px', view === 'unsupported' ? 2 : 3);
   });
 }
 
