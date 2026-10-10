@@ -10,7 +10,9 @@
 
 ## UX-16 の表示名称・見出し改訂
 
-一覧上部のタイトル見出しを削除し、現在位置は既存ステータス行へ移す。表示名は File browser、一覧ヘルプは File browser keybindings。Viewer の VimDF — Keybindings は維持する。tests/browser/local-browser-ui.spec.mjs に 2 ケースを追加し、未登録 / フォルダ内 / 登録一覧 / 取消の位置、空の操作枠の非表示、Options の節・起動・Vimium C 表示名、実 PDF 表示時の別ヘルプを検査する。Viewer の未開封起動ボタンは既存の受け入れテストでも新しい名前で検査する。Chromium 全体は 131、Node と合わせて 443 ケース。実行前に成功扱いにしない。
+一覧上部のタイトル見出しを削除し、現在位置は既存ステータス行へ移す。表示名は File browser、一覧ヘルプは File browser keybindings。Viewer の VimDF — Keybindings は維持する。tests/browser/local-browser-ui.spec.mjs に 2 ケースを追加し、未登録 / フォルダ内 / 登録一覧 / 取消の位置、空の操作枠の非表示、Options の節・起動・Vimium C 表示名、実 PDF 表示時の別ヘルプを検査する。Viewer の未開封起動ボタンは既存の受け入れテストでも新しい名前で検査する。API 非対応画面の文字サイズ検査は、削除した見出しを要求せず、説明文と利用可能な PDF 選択ボタンの 2 要素を含めて検査する。
+
+`9ae3da536c69c368d11dd2d06c0c0447d379849d` の [Node・ビルド CI](https://github.com/shgnaka/vimdf/actions/runs/38065797815) と [Chromium・統合契約 CI](https://github.com/shgnaka/vimdf/actions/runs/38065797807) が全件成功。Node 312、Chromium 131、計 443 ケース。追加 2 ケースと API 非対応の文字サイズ検査を含む全画面テスト、型検査・production build が成功し、skip / todo / 期待失敗なし。Viewer のヘルプと配色・CSS は維持し、未開封起動ボタンの文字列だけを改称した。この記録の追記は文書のみで、本番ソース・テストは検証コミットと同一。
 
 ## 文字サイズ・ボタン表示の実装検証
 
