@@ -221,13 +221,17 @@ async function bootstrap() {
   const runtime = createViewerRuntime(settings, direction => direction === "back" ? history.back() : history.forward());
   pdf = createLocalPdfController({ createRuntime: () => runtime, history, onMode: () => { render(); if (pdf?.mode === "files") focusFiles(); } });
   history.replaceState({ view: "files" }, "");
+  if (!folderApi) {
+    // File fallback does not need a registry connection or folder reads.
+    ready = true; root.hidden = false; render(); focusFiles(); return;
+  }
   storage = await createFolderStorage({ indexedDB, BroadcastChannel,
     pick: options => (window as PickerWindow).showDirectoryPicker!(options), newId: () => crypto.randomUUID(),
     onChanged: announceStale, onBlocked: () => showError(new Error("Saved folders are blocked by another tab. Close it and reload.")),
     onVersionChange: () => { ready = false; showError(new Error("Folder storage changed. Reload this tab.")); render(); },
   });
   session = new LocalBrowserSession({ registry: new FolderRegistry(storage), openPdf });
-  if (folderApi) await session.start();
+  await session.start();
   ready = true; root.hidden = false; render(); focusFiles();
 }
 render();
