@@ -1,6 +1,35 @@
 # ローカル PDF ブラウザの統合テスト契約と実機確認
 
-2026-10-10 の [一覧 UI・キー・ヘルプ・CSS 改訂](local-browser-ui.md#受け入れ条件とテスト化する項目) に UX-01〜13 の追加受け入れ条件を定義した。追加テストと実装は未対応。以下の既存テスト成功は新しい r、一覧全状態の a、一覧ヘルプ、CSS 編集・反映、常設 UI の除去を検証した記録ではない。
+2026-10-10 の [一覧 UI・キー・ヘルプ・CSS 改訂](local-browser-ui.md#受け入れ条件とテスト化する項目) に UX-01〜13 の追加受け入れ条件を定義した。追加テストは作成済み、実装は未対応。以下の既存テスト成功は新しい r、一覧全状態の a、一覧ヘルプ、CSS 編集・反映、常設 UI の除去を検証した記録ではない。
+
+## UX-01〜13 の追加テスト
+
+2026-10-10 に新規 68 ケースを追加した。既存テストは削除・skip・期待失敗化せず、既存 CI の glob に含める。今回の変更はテストと文書のみで、本番ソースを変更しない。
+
+| 条件 | モデル / Chromium の検査 |
+| --- | --- |
+| UX-01 | 上部ロゴ・Settings・常設検索・kbd 案内の除去、Tab、現在位置・選択・件数 |
+| UX-02 / 03 | 深い子フォルダの r、確定保存・再起動、2 段階 Esc 復元、roots の r、permission / empty |
+| UX-04 | 全 4 状態の a、同期 picker・user activation、初回 / 追加 / 重複 / 取消 / 許可拒否 / 保存失敗 |
+| UX-05 | 下部入力、r / a / ? / j の文字入力、Enter の分離、保持・再編集・解除 |
+| UX-06 / 07 | 状態別・Viewer 別の named dialog、scroll / filter / Tab、フォーカス復帰、gg・repeat |
+| UX-08 | IME、修飾キー、native button、busy 中の命令、picker 完了時もヘルプにフォーカス保持 |
+| UX-09 | files / loading / PDF のキー所有、パスワード dialog、PDF の r / a に登録操作なし |
+| UX-10 | 9 公開変数、共通 / ページ別 / ヘルプ CSS、通常・ローカル Viewer、既存設定より優先 |
+| UX-11 | 保存前非反映、local のみ・8 KiB 超、再読込、失敗、CSS 構文・HTML 挿入、状態保持・CSS のみ初期化 |
+| UX-12 | Options からの回復、Options 自体への非適用、style / storage subscription の再利用、重複キー処理なし |
+| UX-13 | キー / ボタンの取消同値性、Tab / Enter / Esc 解除、API 非対応・DB 失敗・stale の操作禁止 |
+
+- `tests/local-browser-ui.test.mjs`：27 ケース。既存 session / registry を直接呼ぶ。ローカルで 12 成功・15 失敗、既存 84 モデルケースは成功（全 111 ケースで 96 成功・15 失敗）。r、browse / permission の a、busy の r が未実装で失敗することを確認した。
+- `tests/browser/local-browser-ui.spec.mjs`：21 ケース。
+- `tests/browser/local-browser-css.spec.mjs`：20 ケース。新規 Chromium は合計 41、既存 45 と合わせて 86 ケース。`playwright --list` で収集と構文を検査した。実拡張画面の実行結果は CI で確認する。
+- `npm run build`：型検査と production build 成功。テストが緑になった記録ではない。
+
+本番 DOM / PDF.js / IndexedDB / storage / handles を使用し、OS picker と許可・保存障害の境界だけを制御する。CSS の見た目の固定値は初期デザインの指定ではなく、利用者が保存するテスト CSS が computed style へ反映したかの検査。初期配色・配置は確定しない。
+
+追加する accessible / 検査識別子は、ヘルプ dialog 名 `Local PDF browser keybindings` / `PDF viewer keybindings`、絞り込み textbox 名 `Filter keybindings`、フォーカス可能な scroll 要素 `data-testid="help-scroll"`。一覧ヘルプのコマンド行には共通定義から `data-command` とキー要素 `data-key` を付け、画面で利用できる操作だけ表示する。Options の CSS 要素は `customCss` / `saveCustomCss` / `resetCustomCss` / `customCssStatus`。適用 style の識別子は `data-vimdf-custom-css`。これらは本番にまだない追加接続契約であり、テスト側で模倣 UI を生成しない。
+
+OS picker の中での Tab / Enter、ブラウザの拡張アイコン右クリック → Options は native UI の代表実機確認を維持する。パスワードの暗号化はこの UI テスト範囲に混ぜず、[保存データ保護の提案](pdf-password-protection.md) として別途整理する。
 
 ## 状態と実行方法
 
@@ -84,7 +113,7 @@ npm run test:local-browser:browser
 
 ### DOM の安定した識別子
 
-Figma でレイアウトや色・余白を変更してもテストが壊れないよう、ピクセル位置や CSS class を検査しない。次の識別子と accessible な選択状態を接続契約にする。
+Figma でレイアウトや色・余白を変更してもテストが壊れないよう、ピクセル位置や装飾用 CSS class を検査しない。公開 CSS セレクターと変数は利用者向け API として変更結果を検査する。次の識別子と accessible な選択状態を接続契約にする。
 
 | 要素 | 識別子・状態 |
 | --- | --- |
