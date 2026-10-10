@@ -2,7 +2,13 @@
 
 2026-10-10 の [一覧 UI・キー・ヘルプ・CSS 改訂](local-browser-ui.md#受け入れ条件とテスト化する項目) に UX-01〜13 の追加受け入れ条件を定義した。追加テストに本番実装を接続した。r、一覧全状態の a、一覧 / Viewer 別の native modal help、CSS 編集・反映、常設 UI の除去を検査する。旧コミットの検証件数と今回の検証を区別する。
 
-## 今回の実装検証
+## UX-14 / 15 の追加テスト
+
+全表示文字の同一サイズと両ボタンの表示設定は [改訂仕様](local-browser-ui.md#文字サイズとボタン表示設定) に定義する。tests/browser/local-browser-appearance.spec.mjs に 18 ケースを追加。Dark / Light / Auto × 960 / 320 px の 6 ケースでファイル名・見出し・補助情報・同名 ID・入力・一覧ヘルプ・解除確認を実際の computed style で検査する。未登録・権限・エラー・API 非対応の説明、CSS による基準文字サイズ変更と Viewer / Options の維持も検査する。
+
+設定は初期値・旧プロフィール・不正値、片方ずつ / 両方の非表示、Options からの保存と再読込、キー・ヘルプの維持、ライブ反映、Tab 除外、入力と modal のフォーカス、登録 / PDF データ / CSS の保持、既定への初期化、PDF 表示中の設定変更を検査する。既存テストを置き換えず Chromium 全体は 129 ケース。CI で実行するまで成功扱いにしない。
+
+## 以前の実装検証
 
 `4022cc6c946e62aa10745548fab949548a2be6e7` の [Node CI](https://github.com/shgnaka/vimdf/actions/runs/38056871733) と [Chromium・統合契約 CI](https://github.com/shgnaka/vimdf/actions/runs/38056871877) が全件成功。フォルダモデル 111（UX 27・従来 84）、パスワード 137（保管庫 103・従来 34）、scroll 14、統合契約 50、Chromium 111（従来 45・UX 41・SEC 25）。Node 312 と Chromium 111 の合計 423 ケース、型検査・production build が成功した。ログの checkout と件数を確認し、テストを skip / todo / 期待失敗へ変更していない。以下の赤い検証記録は過去のテスト追加時点のもの。
 

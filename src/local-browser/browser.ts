@@ -4,7 +4,7 @@ import { createFolderStorage, type IndexedFolderStorage } from "./indexeddb.ts";
 import type { LocalDirectoryHandle } from "./directory.ts";
 import { createLocalPdfController } from "./pdf-controller.ts";
 import { createViewerRuntime } from "../viewer/runtime";
-import { loadSettings } from "../common/settings";
+import { DEFAULT_SETTINGS, loadSettings, onSettingsChanged } from "../common/settings";
 import { HelpPanel } from "../common/help-panel";
 import { browserBindings } from "./commands.ts";
 
@@ -23,6 +23,8 @@ let checking = false;
 let composing = false;
 let removingId: string | null = null;
 let historyNotice = "";
+let browserSettings = DEFAULT_SETTINGS;
+let stopSettings: (() => void) | undefined;
 const removeDialog = document.getElementById("remove-root-dialog") as HTMLDialogElement;
 let pdf: ReturnType<typeof createLocalPdfController> | null = null;
 const folderApi = typeof (window as PickerWindow).showDirectoryPicker === "function";
@@ -50,6 +52,17 @@ function focusFiles() {
   if (document.querySelector("dialog[open]")) return;
   (folderApi ? list : root).focus({ preventScroll: true });
 }
+function applyActionVisibility() {
+  const focused = document.activeElement;
+  const add = action("add"), roots = action("roots");
+  add.hidden = !folderApi || !browserSettings.showAddFolderButton;
+  roots.hidden = !folderApi || !browserSettings.showRegisteredFoldersButton;
+  // A visibility-only update must not rebuild rows, end input or close a modal.
+  if ((focused === add && add.hidden || focused === roots && roots.hidden) && pdf?.mode === "files") {
+    if (session?.inputMode === "filter") filter.focus({ preventScroll: true });
+    else focusFiles();
+  }
+}
 async function openPdf(file: File, identity: string) {
   historyNotice = "";
   try { await pdf!.openPdf(file, identity); }
@@ -72,8 +85,7 @@ function render() {
   action("retry").hidden = error.hidden;
   action("retry").disabled = checking || !!session?.busy;
   action("add").disabled = !ready || !folderApi || stale || !!session?.busy || checking;
-  action("add").hidden = !folderApi;
-  action("roots").hidden = !folderApi;
+  applyActionVisibility();
   action("roots").disabled = !ready || !folderApi || !!session?.busy || checking;
   action("back").disabled = mode !== "pdf";
   action("authorize").hidden = !folderApi || session?.view !== "permission";
@@ -235,11 +247,14 @@ window.addEventListener("popstate", event => {
 window.addEventListener("focus", () => {
   if (ready && !session?.busy && storage) void storage.checkRevision().then(changed => { if (changed) announceStale(); }).catch(showError);
 });
-window.addEventListener("pagehide", () => { pdf?.dispose(); storage?.close(); ready = false; }, { once: true });
+window.addEventListener("pagehide", () => { stopSettings?.(); pdf?.dispose(); storage?.close(); ready = false; }, { once: true });
 
 async function bootstrap() {
   if (chrome.extension.inIncognitoContext || window.parent !== window) throw new Error("Open the local PDF browser in a regular top-level tab.");
   const settings = await loadSettings();
+  browserSettings = settings;
+  applyActionVisibility();
+  stopSettings = onSettingsChanged(settings => { browserSettings = settings; applyActionVisibility(); });
   const runtime = createViewerRuntime(settings, direction => direction === "back" ? history.back() : history.forward());
   pdf = createLocalPdfController({ createRuntime: () => runtime, history, onMode: () => { render(); if (pdf?.mode === "files") focusFiles(); } });
   history.replaceState({ view: "files" }, "");
