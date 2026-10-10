@@ -1,3 +1,4 @@
+import { setupCustomCssOptions } from "../common/custom-css";
 import { setupLauncherOptions } from "./launcher-options";
 import { setupPasswordOptions } from "./password-options";
 import {
@@ -410,3 +411,5 @@ void refreshLocalFileStatus();
 setupPasswordOptions();
 
 void setupLauncherOptions();
+
+setupCustomCssOptions();

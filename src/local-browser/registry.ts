@@ -79,7 +79,7 @@ export class FolderRegistry {
     });
   }
 
-  add(): Promise<RegisteredFolder | null> {
+  add(options: { retainDenied?: boolean } = {}): Promise<RegisteredFolder | null> {
     return this.exclusive(async () => {
       this.assertWritable();
       let handle: LocalDirectoryHandle;
@@ -95,7 +95,7 @@ export class FolderRegistry {
       for (const root of this.roots) {
         if (await root.handle.isSameEntry(handle)) return root;
       }
-      if (await handle.queryPermission({ mode: "read" }) !== "granted") return null;
+      if (await handle.queryPermission({ mode: "read" }) !== "granted" && !options.retainDenied) return null;
       const id = this.storage.newId();
       if (typeof id !== "string" || !id || this.roots.some(root => root.id === id)) {
         throw new Error("A new unique registered folder ID is required");

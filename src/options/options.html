@@ -234,9 +234,22 @@
         </label>
       </section>
 
+      <section id="customCssSettings"><h2>Custom CSS</h2><p class="hint">Customize the browser, PDF viewer and help. These styles do not apply to Options.</p><label for="customCss">Custom CSS</label><textarea id="customCss" rows="10" spellcheck="false"></textarea><button id="saveCustomCss" type="button">Save CSS</button><button id="resetCustomCss" type="button">Reset CSS</button><p id="customCssStatus" role="status"></p></section>
       <section id="passwordSettings">
         <h2>PDF passwords</h2>
-        <p class="hint">Saved in plain text in this browser profile. Passwords are not synced and are only passed to the local PDF reader.</p>
+        <p class="hint">Saved passwords are encrypted in this browser profile with your master password. Keep the master in your password manager; it is never saved here. Passwords are not synced.</p>
+        <p id="passwordVaultStatus" role="status"></p>
+        <div class="password-vault-actions">
+          <button id="passwordCreateVault" type="button">Create vault</button>
+          <button id="passwordUnlockVault" type="button">Unlock vault</button>
+          <button id="passwordLockVault" type="button">Lock vault</button>
+          <button id="passwordBackup" type="button">Encrypted backup</button>
+          <button id="passwordRestore" type="button">Restore backup</button>
+          <button id="passwordExportPlaintext" type="button">Export plaintext</button>
+          <button id="passwordChangeMaster" type="button">Change master password</button>
+          <button id="passwordResetVault" type="button">Reset vault</button>
+          <button id="passwordMigrate" type="button">Migrate saved passwords</button>
+        </div>
         <label class="row checkbox"><input type="checkbox" id="passwordAutoFill" /><span>Automatically try saved passwords</span></label>
         <form class="password-form">
           <label>Name <input name="name" type="text" placeholder="e.g. Course materials" /></label>

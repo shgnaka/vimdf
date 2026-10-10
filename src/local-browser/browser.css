@@ -39,3 +39,17 @@ kbd { border: 1px solid var(--page-border); padding: 1px 4px; border-radius: 3px
 
 #remove-root-dialog { max-width: min(480px, 90vw); background: var(--bg); color: var(--fg); border: 1px solid var(--page-border); border-radius: 10px; padding: 24px; overflow-wrap: anywhere; }
 #remove-root-dialog::backdrop { background: #0008; }
+
+/* Vim-like listing: compact monospace rows and a transient command line. */
+.vimdf-browser { font-family: "SFMono-Regular", Consolas, "Liberation Mono", monospace; }
+.browser-workspace { width: 100%; padding: 18px 24px; }
+h1 { font-size: 15px; font-weight: normal; margin: 0; }
+.browser-heading { margin-bottom: 12px; }
+.browser-row { min-height: 32px; padding: 6px 12px; border-radius: 0; }
+.browser-row[aria-selected="true"] { background: var(--vimdf-selection-bg); color: var(--vimdf-selection-fg); box-shadow: inset 3px 0 var(--vimdf-accent); }
+.browser-actions button { padding: 3px 8px; border-radius: 0; background: transparent; color: var(--vimdf-fg); }
+.row-icon { color: var(--vimdf-accent); }
+.row-kind, .row-primary, .list-labels { color: var(--vimdf-muted-fg); }
+.browser-footer { padding: 5px 12px; background: var(--vimdf-status-bg); color: var(--vimdf-status-fg); }
+.browser-search { position: absolute; bottom: 28px; left: 0; right: 0; padding: 6px 12px; margin: 0; border: 0; border-radius: 0; background: var(--vimdf-bg); }
+.browser-search input { color: var(--vimdf-fg); }

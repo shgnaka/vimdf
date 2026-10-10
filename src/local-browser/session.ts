@@ -2,6 +2,7 @@ import { LocalBrowser } from "./directory.ts";
 import type { LocalEntry, OpenPdf } from "./directory.ts";
 import type { FolderRegistry, RegisteredFolder } from "./registry.ts";
 import { NameSelection } from "./selection.ts";
+import { FOLDER_KEYS } from "./commands.ts";
 
 export interface BrowserKey {
   key: string;
@@ -20,7 +21,7 @@ export interface RegisteredEntry {
 
 export type BrowserView = "empty" | "browse" | "roots" | "permission";
 
-const commandKeys = new Set(["j", "k", "ArrowUp", "ArrowDown", "g", "G", "h", "l", "Enter", "a", "/", "Escape"]);
+const commandKeys = new Set(["j", "k", "ArrowUp", "ArrowDown", "g", "G", "h", "l", "Enter", "r", "a", "/", "Escape"]);
 
 export class LocalBrowserSession {
   private readonly registry: FolderRegistry;
@@ -116,10 +117,11 @@ export class LocalBrowserSession {
   }
 
   openRoots(): void {
-    if (this.busy) return;
+    if (this.busy || this.view === "roots" || this.view === "empty") return;
     this.returnToBrowser = this.view === "browse";
-    this.showRoots(this.currentRootId ?? this.registry.primaryId);
+    this.showRoots(this.pendingId ?? this.currentRootId ?? this.registry.primaryId);
   }
+  resetKeySequence(): void { this.pendingG = false; }
 
   removeRoot(id: string): Promise<void> {
     return this.run(async () => {
@@ -155,12 +157,10 @@ export class LocalBrowserSession {
       if (key === "Escape") { this.mode = "normal"; this.setFilter(""); return true; }
       return false;
     }
-    if (event.repeat && ["g", "Enter", "l", "a", "Escape"].includes(key)) {
-      return this.view === "roots" || (this.view === "browse" && key !== "a")
-        || (this.view === "empty" && (key === "Enter" || key === "a"))
-        || (this.view === "permission" && (key === "Enter" || key === "Escape"));
-    }
+    if (event.repeat && ["g", "r", "Enter", "l", "a", "Escape"].includes(key)) return true;
     if (key !== "g") this.pendingG = false;
+    if (key === FOLDER_KEYS.roots) { this.openRoots(); return true; }
+    if (key === FOLDER_KEYS.add) return this.consume(() => this.addFolder());
     if (this.view === "empty") {
       return key === "Enter" || key === "a" ? this.consume(() => this.addFolder()) : false;
     }
@@ -233,7 +233,7 @@ export class LocalBrowserSession {
   }
 
   private async addFolder(): Promise<void> {
-    const root = await this.registry.add();
+    const root = await this.registry.add({ retainDenied: this.registry.roots.length > 0 });
     if (!root) return;
     if (this.view === "empty") await this.openRoot(root);
     else this.showRoots(root.id);

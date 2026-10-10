@@ -1,3 +1,4 @@
+import { setupCustomCss } from "../common/custom-css";
 import { Viewer, applyTheme, applyCustomStyles } from "./core";
 import type { PdfSource } from "./core";
 import type { PdfSnapshot } from "../local-browser/pdf-controller.ts";
@@ -8,6 +9,7 @@ import { onSettingsChanged, type Settings } from "../common/settings";
 
 /** One DOM tree, one controller and one settings subscription per page. */
 export function createViewerRuntime(settings: Settings, navigateHistory?: (direction: "back" | "forward") => void) {
+  setupCustomCss();
   applyTheme(settings.theme); applyCustomStyles(settings);
   const viewer = new Viewer(settings);
   const marks = new MarksStore("");

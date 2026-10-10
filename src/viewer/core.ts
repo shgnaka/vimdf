@@ -317,11 +317,12 @@ export class Viewer {
     const oldIdentity = this.pdfUrl;
     const oldHighlights = this.highlightStore;
     const oldUserHighlights = this.userHighlights;
+    const passwordStore = createPasswordStore(loading.signal);
     const pdf = await openWithPasswords({
       task: loadingTask,
       documentKey: passwordKey,
-      store: createPasswordStore(loading.signal),
-      prompt: showPasswordPrompt,
+      store: passwordStore,
+      prompt: info => showPasswordPrompt({ ...info, store: passwordStore }),
       autoFill: !chrome.extension.inIncognitoContext,
       signal: loading.signal,
       onSaveError: () => this.setStatusCenter("PDF opened, but the password could not be saved."),
