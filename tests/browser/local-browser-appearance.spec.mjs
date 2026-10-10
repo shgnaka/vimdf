@@ -1,4 +1,4 @@
-import { test, expect, filter, openLesson, rootB } from './extension-fixture.mjs';
+import { test, expect, filter, openLesson, pdfIdentity, rootB } from './extension-fixture.mjs';
 
 test.use({ actionTimeout: 5000 });
 
@@ -152,10 +152,12 @@ for (const [showAdd, showRoots] of [[false, true], [true, false], [false, false]
 test('[UX-15] live updates preserve editing, modal focus and data; hiding a focused button restores list focus and excludes it from Tab', async ({ extension }) => {
   await extension.seed(); const page = await extension.openBrowser(); await ready(page);
   const registry = await extension.registry();
-  await extension.setupPage.evaluate(() => chrome.storage.local.set({
+  await extension.setupPage.evaluate(identity => chrome.storage.local.set({
     'vimdf.customCss.v1': { version: 1, css: '.vimdf-browser { --vimdf-accent: #123456; }' },
-    'vimdf.lastPages': { lesson: 2 },
-  }));
+    [`vimdf:state:${identity}`]: { page: 2, scrollTop: 42 },
+    [`vimdf:marks:${identity}`]: { a: { page: 2, x: 0, y: 100 } },
+    [`vimdf:highlights:${identity}`]: [{ id: 'fixture-highlight', color: '#ff0000', page: 1, rects: [] }],
+  }), pdfIdentity);
   const local = await extension.setupPage.evaluate(() => chrome.storage.local.get(null));
   await filter(page, 'course'); await page.keyboard.press('Enter'); await ready(page);
   await page.keyboard.press('/'); await page.getByTestId('browser-filter').fill('lesson'); const editing = await snapshot(page);
@@ -186,7 +188,7 @@ test('[UX-15] live updates preserve editing, modal focus and data; hiding a focu
 
 test('[UX-15] changes made during PDF viewing apply on return without moving the PDF or invoking folder commands', async ({ extension }) => {
   await extension.seed(); const page = await extension.openBrowser(); await openLesson(page);
-  await page.keyboard.press('G'); await expect(page.locator('#statusLeft')).toContainText('2');
+  await page.keyboard.press('G'); await expect(page.locator('#statusLeft')).toHaveText('Page 2 / 2');
   const before = await page.locator('#statusLeft').textContent();
   await setCheckbox(extension, 'showAddFolderButton', false);
   await setCheckbox(extension, 'showRegisteredFoldersButton', false);
