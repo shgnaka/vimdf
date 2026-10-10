@@ -33,7 +33,7 @@
 
 追加する accessible / 検査識別子は、ヘルプ dialog 名 `Local PDF browser keybindings` / `PDF viewer keybindings`、絞り込み textbox 名 `Filter keybindings`、フォーカス可能な scroll 要素 `data-testid="help-scroll"`。一覧ヘルプのコマンド行には共通定義から `data-command` とキー要素 `data-key` を付け、画面で利用できる操作だけ表示する。Options の CSS 要素は `customCss` / `saveCustomCss` / `resetCustomCss` / `customCssStatus`。適用 style の識別子は `data-vimdf-custom-css`。これらは本番にまだない追加接続契約であり、テスト側で模倣 UI を生成しない。
 
-OS picker の中での Tab / Enter、ブラウザの拡張アイコン右クリック → Options は native UI の代表実機確認を維持する。パスワードの暗号化・バックアップ・平文エクスポート・復元はこの UI テスト範囲に混ぜず、[保管庫の要件と仕様](pdf-password-protection.md) の SEC-01〜24 として別途整理する。この 24 条件の追加テストは未作成であり、既存 34 件のパスワードテストや上記の検証件数に加算しない。
+OS picker の中での Tab / Enter、ブラウザの拡張アイコン右クリック → Options は native UI の代表実機確認を維持する。パスワードの暗号化・バックアップ・平文エクスポート・復元は UX-01〜13 と区別し、[保管庫の追加テスト](pdf-password-testing.md) で SEC-01〜24 を検査する。Node 101・Chromium 24 ケースを追加し、既存 34 件のパスワードテストやこの節の旧 CI 件数に加算しない。既存の UI テストと同じ Chromium glob で実行する。
 
 ## 状態と実行方法
 

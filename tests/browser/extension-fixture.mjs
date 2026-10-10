@@ -19,7 +19,7 @@ export const test = base.extend({
     const profile = await mkdtemp(join(tmpdir(), 'vimdf-tests-'));
     let context;
     try {
-      context = await chromium.launchPersistentContext(profile, { channel: 'chromium', headless: true,
+      context = await chromium.launchPersistentContext(profile, { channel: 'chromium', headless: true, acceptDownloads: true,
         args: [`--disable-extensions-except=${dist},${caller}`, `--load-extension=${dist},${caller}`] });
       await context.tracing.start({ screenshots: true, snapshots: true, sources: true });
       const isCaller = worker => new URL(worker.url()).pathname === '/caller.js';

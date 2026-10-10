@@ -45,7 +45,7 @@ In extension settings, register named passwords under **PDF passwords**. VimDF t
 
 Passwords are stored in plain text in this browser profile, never synced, and only passed to the local PDF.js reader. Incognito mode does not read or write the password vault. Disable automatic input in settings to enter passwords manually. Development checks: Node.js 24+, `npm ci`, `npm run test:password`, and `npm run build`.
 
-The [encrypted-vault requirements](docs/pdf-password-protection.md) define master-password unlock, encrypted backups and restore, and explicit plaintext export with reauthentication for every export. These features and their additional security tests are not implemented yet; the current plaintext-storage warning still applies.
+The [encrypted-vault requirements](docs/pdf-password-protection.md) define master-password unlock, encrypted backups and restore, and explicit plaintext export with reauthentication for every export. [Security acceptance tests](docs/pdf-password-testing.md) have been added; the production features are not implemented yet, so the current plaintext-storage warning still applies. New tests fail normally until the encrypted store and UI are connected.
 
 - **Vim-style navigation** — `j`/`k`/`h`/`l`, `gg`/`G`/`{n}G`, `Ctrl-d`/`Ctrl-u`/`Ctrl-f`/`Ctrl-b`
 - **Tab navigation** (Vimium-compatible) — `J`/`K` previous/next tab, `g0`/`g$` first/last, `t` new tab, `x` close. Fills the gap left by Vimium not being able to bind keys on Chrome's PDF viewer
