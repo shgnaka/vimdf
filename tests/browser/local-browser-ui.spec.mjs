@@ -1,5 +1,7 @@
 import { test, expect, filter, openLesson, rootA, rootB } from './extension-fixture.mjs';
 
+test.use({ actionTimeout: 5000 });
+
 const screen = page => page.getByTestId('local-browser');
 const input = page => page.getByTestId('browser-filter');
 const help = page => page.getByRole('dialog', { name: 'Local PDF browser keybindings', exact: true });
@@ -248,7 +250,12 @@ for (const failure of ['unsupported API', 'DB failure', 'stale registry']) {
     if (failure === 'DB failure') await extension.context.addInitScript(() => {
       IDBFactory.prototype.open = () => { throw new DOMException('unavailable', 'SecurityError'); };
     });
-    const page = await extension.openBrowser(); await ready(page);
+    const page = await extension.openBrowser();
+    if (failure === 'DB failure') {
+      // Initialization failure is deliberately locked, not a ready empty list.
+      await expect(page.getByRole('alert')).toBeVisible();
+      await expect(page.locator('[data-action="add"]')).toBeDisabled();
+    } else await ready(page);
     if (failure === 'stale registry') {
       const other = await extension.openBrowser(); await roots(other);
       await other.getByRole('option', { name: 'Books', exact: true }).dblclick();

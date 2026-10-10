@@ -22,8 +22,10 @@
 
 - `tests/local-browser-ui.test.mjs`：27 ケース。既存 session / registry を直接呼ぶ。ローカルで 12 成功・15 失敗、既存 84 モデルケースは成功（全 111 ケースで 96 成功・15 失敗）。r、browse / permission の a、busy の r が未実装で失敗することを確認した。
 - `tests/browser/local-browser-ui.spec.mjs`：21 ケース。
-- `tests/browser/local-browser-css.spec.mjs`：20 ケース。新規 Chromium は合計 41、既存 45 と合わせて 86 ケース。`playwright --list` で収集と構文を検査した。実拡張画面の実行結果は CI で確認する。
+- `tests/browser/local-browser-css.spec.mjs`：20 ケース。新規 Chromium は合計 41、既存 45 と合わせて 86 ケース。`playwright --list` で収集と構文を検査した。初回 Chromium CI は [38035280405](https://github.com/shgnaka/vimdf/actions/runs/38035280405)（`06ccbb213685a1941d3b799939ed8dabc4385493`）で全 86 件中 51 成功・35 失敗。既存 45 件は全件成功。新規 6 成功・35 失敗のうち、通常 Viewer 2 ケースの PDF 提供と DB 初期化失敗の待機 1 ケースはテスト準備側の不備だったため修正し、再検査する。通常 Viewer は background fetch を含む実 HTTP 経由、初期化失敗は alert と操作禁止を待つ。未実装による失敗と準備の誤りを区別する。
 - `npm run build`：型検査と production build 成功。テストが緑になった記録ではない。
+
+新規画面テストの操作待ちと expect は 5 秒、ケース全体は既存設定と同じ 20 秒。欠けたコントロールの待機時間だけで未実装の検査が長時間停止しないようにする。
 
 本番 DOM / PDF.js / IndexedDB / storage / handles を使用し、OS picker と許可・保存障害の境界だけを制御する。CSS の見た目の固定値は初期デザインの指定ではなく、利用者が保存するテスト CSS が computed style へ反映したかの検査。初期配色・配置は確定しない。
 

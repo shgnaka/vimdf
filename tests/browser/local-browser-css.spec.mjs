@@ -1,5 +1,8 @@
 import { test, expect, filter, openLesson, pdfIdentity } from './extension-fixture.mjs';
 import { lessonPdf } from '../helpers/pdf-bytes.mjs';
+import { createServer } from 'node:http';
+
+test.use({ actionTimeout: 5000 });
 
 const key = 'vimdf.customCss.v1';
 const screen = page => page.getByTestId('local-browser');
@@ -24,11 +27,19 @@ async function setCss(extension, css) {
   await extension.setupPage.evaluate(({ key, css }) => chrome.storage.local.set({ [key]: { version: 1, css } }), { key, css });
 }
 async function ordinaryViewer(extension) {
+  // The real Viewer fetches through the extension service worker, which a
+  // page.route cannot intercept. Use the same real HTTP boundary as PDF-05.
+  const server = createServer((_request, response) => {
+    response.writeHead(200, { 'Content-Type': 'application/pdf' }); response.end(lessonPdf());
+  });
+  await new Promise(resolve => server.listen(0, '127.0.0.1', resolve)); server.unref();
   const page = await extension.context.newPage();
-  const source = 'https://vimdf-css-test.invalid/lesson.pdf';
-  await page.route(source, route => route.fulfill({ contentType: 'application/pdf', body: lessonPdf() }));
-  await page.goto(`${extension.url('src/viewer/viewer.html')}?file=${encodeURIComponent(source)}`);
-  await expect(page.locator('#viewer .page')).toHaveCount(2); return page;
+  page.once('close', () => { server.close(); server.closeAllConnections(); });
+  try {
+    const source = `http://127.0.0.1:${server.address().port}/lesson.pdf`;
+    await page.goto(`${extension.url('src/viewer/viewer.html')}?file=${encodeURIComponent(source)}`);
+    await expect(page.locator('#viewer .page')).toHaveCount(2); return page;
+  } catch (error) { await page.close(); throw error; }
 }
 async function listState(page) {
   return page.evaluate(() => ({ location: document.querySelector('[data-testid="browser-location"]').textContent,
