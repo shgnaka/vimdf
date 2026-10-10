@@ -46,7 +46,7 @@ Viewer と Options は現状を採用する。Options の Local PDF browser 節�
 | 枠 | #333333 | #bbbbbb |
 | エラー / 解除確定 | #e57373 | #c23b22 |
 
-既存 Dark / Light / Auto を継承し、一覧専用の設定やテーマ切替を増やさない。Custom CSS と公開変数 9 個の優先順位を維持する。橙色は細い選択マーカーを中心に使い、大きな背景を塗らない。明色ヘルプのキー文字は青を使う。
+既存 Dark / Light / Auto を継承し、一覧専用のテーマ設定やテーマ切替を増やさない。Custom CSS と公開変数 9 個の優先順位を維持する。橙色は細い選択マーカーを中心に使い、大きな背景を塗らない。明色ヘルプのキー文字は青を使う。
 
 本体へ移す場合は規則を #files、.vimdf-browser、一覧の確認・ヘルプへ限定する。共有 viewer.css、options.css、.vimdf-viewer、Viewer の #help は変更しない。ページ全体への button / h1 / dialog 規則を追加して Viewer 側へ漏らさない。
 

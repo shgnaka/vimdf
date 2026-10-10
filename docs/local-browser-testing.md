@@ -6,7 +6,13 @@
 
 全表示文字の同一サイズと両ボタンの表示設定は [改訂仕様](local-browser-ui.md#文字サイズとボタン表示設定) に定義する。tests/browser/local-browser-appearance.spec.mjs に 18 ケースを追加。Dark / Light / Auto × 960 / 320 px の 6 ケースでファイル名・見出し・補助情報・同名 ID・入力・一覧ヘルプ・解除確認を実際の computed style で検査する。未登録・権限・エラー・API 非対応の説明、CSS による基準文字サイズ変更と Viewer / Options の維持も検査する。
 
-設定は初期値・旧プロフィール・不正値、片方ずつ / 両方の非表示、Options からの保存と再読込、キー・ヘルプの維持、ライブ反映、Tab 除外、入力と modal のフォーカス、登録 / PDF データ / CSS の保持、既定への初期化、PDF 表示中の設定変更を検査する。既存テストを置き換えず Chromium 全体は 129 ケース。CI で実行するまで成功扱いにしない。
+設定は初期値・旧プロフィール・不正値、片方ずつ / 両方の非表示、Options からの保存と再読込、キー・ヘルプの維持、ライブ反映、Tab 除外、入力と modal のフォーカス、登録 / PDF データ / CSS の保持、既定への初期化、PDF 表示中の設定変更を検査する。既存テストを置き換えず Chromium 全体は 129 ケース。
+
+## 今回の実装検証
+
+`52ea9609fa85b96a5fb458761620e3e98a42b43a` の [Node・ビルド CI](https://github.com/shgnaka/vimdf/actions/runs/38062945465) と [Chromium・統合契約 CI](https://github.com/shgnaka/vimdf/actions/runs/38062945499) が全件成功。Node 312（フォルダ 111、パスワード 137、scroll 14、統合契約 50）と Chromium 129（既存 111、新規 UX-14 / 15 の 18）、合計 441 ケース成功。型検査・production build も成功し、skip / todo / 期待失敗なし。ログの対象コミット、件数、新規 18 ケースの成功を確認した。表示は本番 DOM の computed style、保存は実 storage / IndexedDB、PDF の位置は Page 2 / 2 として検査する。OS picker と権限の境界は従来どおり制御する。
+
+この改訂では Viewer 配下と共有 viewer.css、options.css は未変更。Options の HTML / TS に表示チェックを追加した。検証記録の追記は文書のみで、本番ソース・テストの blob は検証コミットと一致する。会話内の見本は文字サイズと表示切替を反映しているが、実行結果は見本ではなく上記 CI の本番拡張に対するもの。
 
 ## 以前の実装検証
 
