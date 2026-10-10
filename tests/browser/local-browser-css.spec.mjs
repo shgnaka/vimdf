@@ -37,7 +37,9 @@ async function ordinaryViewer(extension) {
   page.once('close', () => { server.close(); server.closeAllConnections(); });
   try {
     const source = `http://127.0.0.1:${server.address().port}/lesson.pdf`;
-    await page.goto(`${extension.url('src/viewer/viewer.html')}?file=${encodeURIComponent(source)}`);
+    // The DNR-compatible Viewer reads the raw tail, rather than decoding a
+    // URLSearchParams value. Preserve the canonical existing launch contract.
+    await page.goto(`${extension.url('src/viewer/viewer.html')}?file=${source}`);
     await expect(page.locator('#viewer .page')).toHaveCount(2); return page;
   } catch (error) { await page.close(); throw error; }
 }
