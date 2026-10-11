@@ -69,5 +69,7 @@ export class HelpPanel {
         row.hidden = !!query && !group.some(r => !r.hidden);
       }
     });
+    const empty = this.dialog.querySelector<HTMLElement>("[data-help-empty]");
+    if (empty) empty.hidden = !query || rows.some(row => !row.querySelector("th") && !row.hidden);
   }
 }

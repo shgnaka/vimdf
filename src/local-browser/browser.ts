@@ -117,8 +117,13 @@ function render() {
   for (const element of document.querySelectorAll<HTMLElement>(".list-labels, #browser-list, .browser-footer")) element.hidden = !folderApi;
   document.querySelector<HTMLElement>(".browser-search")!.hidden = !folderApi || session?.inputMode !== "filter";
   message.hidden = !folderApi && !historyNotice;
-  document.getElementById("browser-fallback")!.hidden = folderApi && !(pdf && !ready && !error.hidden);
+  const fallback = document.getElementById("browser-fallback")!;
+  fallback.hidden = folderApi && !(pdf && !ready && !error.hidden);
+  fallback.querySelector("p")!.textContent = folderApi
+    ? "Saved folders could not be loaded. Retry folder access or open a PDF file instead."
+    : "Folder browsing is unavailable in this browser. Open a PDF file instead.";
   action("pick-file").disabled = !pdf || pdf.mode === "loading-pdf";
+  if (!ready && !error.hidden) { message.textContent = ""; message.hidden = true; }
   if (!session) return;
   document.querySelector<HTMLElement>('[data-testid="browser-location"]')!.textContent = session.location;
   filter.readOnly = session.inputMode !== "filter";
@@ -126,8 +131,9 @@ function render() {
   list.setAttribute("aria-busy", String(checking || session.busy));
   if (!composing && filter.value !== session.filter) filter.value = session.filter;
   document.getElementById("filter-mode")!.textContent = session.inputMode === "filter" ? "FILTER" : "NAMES";
-  message.textContent = historyNotice || (session.view === "empty" ? "Add a folder to browse its PDFs. You can register several folders."
-    : session.view === "permission" ? "Read access is required. Press Enter to confirm, or Esc to choose another folder."
+  const pendingFolder = session.registeredFolders.find(folder => folder.id === session!.pendingRootId);
+  message.textContent = !ready && !error.hidden ? "" : historyNotice || (session.view === "empty" ? "Add a folder to browse its PDFs. You can register several folders."
+    : session.view === "permission" ? `Read access is required for ${pendingFolder?.name ?? "this folder"}. Press Enter to confirm, or Esc to choose another folder.`
     : session.entries.length === 0 && session.filter ? "No matching folder or PDF names. Clear the filter to see all items."
     : session.view === "roots" ? "Select a folder and press Enter to make it the default starting folder."
     : session.entries.length === 0 ? "This folder has no folders or PDFs to display." : "");

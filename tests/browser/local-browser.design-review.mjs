@@ -29,6 +29,7 @@ function captureFor(theme, testInfo) {
       status: document.querySelector('#browser-state')?.textContent ?? null,
       dialog: document.querySelector('dialog[open]')?.getAttribute('aria-label') ?? document.querySelector('dialog[open] h2')?.textContent ?? null,
       background: getComputedStyle(document.querySelector('#files') ?? document.body).backgroundColor,
+      systemColorScheme: matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light',
     }));
     entries.push({ file, id, title, note, theme, viewport: page.viewportSize(), observed,
       sourceCommit: process.env.GITHUB_SHA ?? null, run: process.env.GITHUB_RUN_ID ?? null,
@@ -215,7 +216,9 @@ for (const theme of ['dark', 'light']) {
 
   test(`${theme}: frozen Options and password dialog references`, async ({ extension }, testInfo) => {
     await extension.setupPage.evaluate(theme => chrome.storage.sync.set({ theme }), theme);
-    const options = extension.setupPage; await options.reload(); await options.setViewportSize({ width: 960, height: 640 });
+    const options = extension.setupPage;
+    await options.emulateMedia({ colorScheme: theme });
+    await options.reload(); await options.setViewportSize({ width: 960, height: 640 });
     const shot = captureFor(theme, testInfo);
     await expect(options.locator('#showAddFolderButton')).toBeVisible();
     await shot(options, 'R03', 'Options 全体の参照', '既存デザイン。File browser と Custom CSS の配置を含む。全ページの撮影。', true);
