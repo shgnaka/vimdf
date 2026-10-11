@@ -49,7 +49,7 @@ test('[UX-18] mouse, keys and filtering keep one selected item and its spoken id
   await page.keyboard.press('j'); await selectionMatchesAnnouncement(page, 'locked.pdf');
   await expect(status(page)).toContainText('2/4');
   await filter(page, 'z.pdf'); await selectionMatchesAnnouncement(page, 'z.pdf');
-  await expect(status(page)).toContainText('1/1'); await expect(status(page)).toContainText(/\b1 items?\b/);
+  await expect(status(page)).toContainText('1/1'); await expect(page.locator('#browser-count')).toHaveText(/^1 items?$/);
   await page.keyboard.press('Escape'); await expect(page.getByRole('option')).toHaveCount(4);
   await selectionMatchesAnnouncement(page, 'z.pdf');
   await roots(page); await selectionMatchesAnnouncement(page, 'University');
@@ -180,18 +180,17 @@ test('[UX-21] keyboard action focus remains visible and uses the configurable fo
 });
 
 test.describe('coarse pointer', () => {
-  test.use({ hasTouch: true, isMobile: true });
+  test.use({ hasTouch: true });
   test('[UX-22] touch targets stay large enough without enlarging browser text', async ({ extension }) => {
     await extension.seed(); const page = await extension.openBrowser(); await ready(page);
-    // Chromium extension pages can retain desktop pointer capabilities under
-    // hasTouch alone. Configure the native input emulator, never matchMedia or
-    // the stylesheet, and require the actual coarse-pointer query below.
+    // Reapply native touch emulation after the extension document has loaded.
+    // Never replace matchMedia or the stylesheet to fabricate the result.
     const inputEmulation = await extension.context.newCDPSession(page);
-    await inputEmulation.send('Emulation.setEmitTouchEventsForMouse', { enabled: true, configuration: 'mobile' });
-    const pointer = await page.evaluate(() => ({ coarse: matchMedia('(pointer: coarse)').matches,
-      fine: matchMedia('(pointer: fine)').matches, touchPoints: navigator.maxTouchPoints }));
-    expect(pointer, 'The browser must really expose the coarse-pointer media query').toMatchObject({ coarse: true });
     async function targets() {
+      await inputEmulation.send('Emulation.setTouchEmulationEnabled', { enabled: true, maxTouchPoints: 1 });
+      const pointer = await page.evaluate(() => ({ coarse: matchMedia('(pointer: coarse)').matches,
+        fine: matchMedia('(pointer: fine)').matches, touchPoints: navigator.maxTouchPoints }));
+      expect(pointer.coarse, `The real pointer query must be coarse: ${JSON.stringify(pointer)}`).toBe(true);
       for (const button of await page.locator('#files button:visible').all()) {
         const box = await button.boundingBox();
         expect(box.width, 'An action can be tapped horizontally').toBeGreaterThanOrEqual(44);

@@ -12,16 +12,18 @@ export const rootB = '00000000-0000-4000-8000-000000000002';
 export const pdfIdentity = `https://local-pdf.vimdf.invalid/${rootA}/course/lesson.pdf`;
 
 export const test = base.extend({
-  extension: async ({ hasTouch, isMobile }, use, testInfo) => {
+  extension: async ({ hasTouch }, use, testInfo) => {
     const dist = resolve(repository, 'dist');
     const caller = resolve(repository, 'tests/browser/caller');
     if (!existsSync(join(dist, 'manifest.json'))) throw new Error('Run npm run build before the browser suite');
     const profile = await mkdtemp(join(tmpdir(), 'vimdf-tests-'));
     let context;
     try {
-      context = await chromium.launchPersistentContext(profile, { channel: 'chromium', headless: true, acceptDownloads: true, hasTouch, isMobile,
+      context = await chromium.launchPersistentContext(profile, { channel: 'chromium', headless: true, acceptDownloads: true, hasTouch,
         args: [`--disable-extensions-except=${dist},${caller}`, `--load-extension=${dist},${caller}`] });
-      await context.tracing.start({ screenshots: true, snapshots: true, sources: true });
+      // Chromium captures can reset touch emulation. Touch tests retain DOM
+      // traces and a failure screenshot without background screenshot captures.
+      await context.tracing.start({ screenshots: !hasTouch, snapshots: true, sources: true });
       const isCaller = worker => new URL(worker.url()).pathname === '/caller.js';
       let worker = context.serviceWorkers().find(worker => !isCaller(worker));
       worker ??= await context.waitForEvent('serviceworker', { predicate: worker => !isCaller(worker) });

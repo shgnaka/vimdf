@@ -6,7 +6,7 @@
 
 tests/browser/local-browser-usability.spec.mjs に 10 ケース追加。検査するのは選択と読み上げ・件数の一致、0 件時の無効な参照と確定の防止、320 px での長い同名登録の識別と取消、折返したステータスと入力 / 選択行の非重複、ヘルプ / 確認の正逆 Tab、処理中の情報とヘルプのフォーカス、実際のフォーカス色、coarse pointer の操作領域。CSS の構成やピクセル座標を指定せず、実際の境界・重なり・クリップ・表示情報と操作結果を検査する。
 
-既存の本番ページ・IndexedDB・OPFS handle と列挙処理を使う。試験用 fixture には長い同名登録と hasTouch / isMobile の指定を追加する。遅い読込は native values() の完了を制御し、画面の状態や表示内容を試験側で生成しない。タッチは Chromium の native 入力エミュレーションを設定し、実際の pointer: coarse の成立とボタンの tap まで確認する。matchMedia の返り値や試験用 CSS で結果を作らず、モバイル版の拡張対応を主張しない。
+既存の本番ページ・IndexedDB・OPFS handle と列挙処理を使う。試験用 fixture には長い同名登録と hasTouch の指定を追加する。遅い読込は native values() の完了を制御し、画面の状態や表示内容を試験側で生成しない。タッチは拡張文書の読込後に Chromium の native touch emulation を適用し、各画面で実際の pointer: coarse の成立とボタンの tap まで確認する。matchMedia の返り値や試験用 CSS で結果を作らず、モバイル版の拡張対応を主張しない。タッチ時は背景キャプチャを止めて DOM trace と失敗時のスクリーンショットを残す。キャプチャによる emulation 解除の [upstream の再現例](https://github.com/microsoft/playwright/issues/42607) も参照する。
 
 修正前の `90a24e9cdc0ad06f3fefbbd30ab5ab886dd17440` の [Chromium CI](https://github.com/shgnaka/vimdf/actions/runs/38107519538) では、追加ケースがマウス選択時の位置表示のずれ、17 px での長い同名行の見切れ、入力とステータスの重なり、解除確認の Tab によるフォーカス逸脱、読込中の表示不足を再現した。既存 133 ケースは成功。タッチケースは coarse pointer の設定段階で失敗したため、アプリの不具合の再現として数えない。修正後の結果は実行完了後に追記する。
 
