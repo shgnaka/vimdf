@@ -8,7 +8,11 @@ tests/browser/local-browser-usability.spec.mjs に 10 ケース追加。検査�
 
 既存の本番ページ・IndexedDB・OPFS handle と列挙処理を使う。試験用 fixture には長い同名登録と hasTouch の指定を追加する。遅い読込は native values() の完了を制御し、画面の状態や表示内容を試験側で生成しない。タッチは拡張文書の読込後に Chromium の native touch emulation を適用し、各画面で実際の pointer: coarse の成立とボタンの tap まで確認する。matchMedia の返り値や試験用 CSS で結果を作らず、モバイル版の拡張対応を主張しない。タッチ時は背景キャプチャを止めて DOM trace と失敗時のスクリーンショットを残す。キャプチャによる emulation 解除の [upstream の再現例](https://github.com/microsoft/playwright/issues/42607) も参照する。
 
-修正前の `90a24e9cdc0ad06f3fefbbd30ab5ab886dd17440` の [Chromium CI](https://github.com/shgnaka/vimdf/actions/runs/38107519538) では、追加ケースがマウス選択時の位置表示のずれ、17 px での長い同名行の見切れ、入力とステータスの重なり、解除確認の Tab によるフォーカス逸脱、読込中の表示不足を再現した。既存 133 ケースは成功。タッチケースは coarse pointer の設定段階で失敗したため、アプリの不具合の再現として数えない。修正後の結果は実行完了後に追記する。
+修正前の `90a24e9cdc0ad06f3fefbbd30ab5ab886dd17440` の [Chromium CI](https://github.com/shgnaka/vimdf/actions/runs/38107519538) では、追加ケースがマウス選択時の位置表示のずれ、17 px での長い同名行の見切れ、入力とステータスの重なり、解除確認の Tab によるフォーカス逸脱、読込中の表示不足を再現した。既存 133 ケースは成功。タッチケースは coarse pointer の設定段階で失敗したため、アプリの不具合の再現として数えない。
+
+修正後の `dcc3234d2c27b2a01d5142b881475c29600c2a7f` の [Node・ビルド CI](https://github.com/shgnaka/vimdf/actions/runs/38108301039) と [Chromium・統合契約 CI](https://github.com/shgnaka/vimdf/actions/runs/38108301025) が全件成功。Node 312（パスワード 137、フォルダ 111、scroll 14、統合契約 50）、Chromium 143（既存 133、追加 10）、計 455 ケース。追加 10 ケースすべて、型検査と production build を含み、skip / todo / 期待失敗なし。ログの checkout と件数も確認した。
+
+位置表示をクリック選択と同期し、長い名前・識別子・行操作を折り返せるようにした。入力とステータスはそれぞれ表示領域を確保し、解除確認の Tab / Shift+Tab はダイアログ内を巡回する。読込中は直前の情報を維持して LOADING を表示し、coarse pointer のボタンには文字サイズを変えず 44 × 44 px 以上の領域を確保する。検索解除後の選択先など未指定の方針は固定せず、表示と読み上げの一致を検査する。Viewer / Options のソース・CSS は今回の変更対象に含まれない。この実行記録の追記は文書のみで、本番ソース・テストは検証コミットと同一。
 
 ## UX-17 の表示情報に基づく改訂
 
