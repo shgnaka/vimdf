@@ -1,6 +1,20 @@
 # ローカル PDF ブラウザの統合テスト契約と実機確認
 
-見た目の最終確認に使う本番スクリーンショットは [撮影記録](local-browser-design-review.md) を参照。回帰検査 455 ケースと、画像を取得する 24 撮影ケースは別に管理する。撮影成功は表示の最終承認を意味せず、撮影で見つかった表示上の不足も同記録に残す。
+見た目の最終確認に使う本番スクリーンショットは [撮影記録](local-browser-design-review.md) を参照。回帰検査 467 ケースと、画像を取得する 24 撮影ケースは別に管理する。撮影成功は表示の最終承認を意味せず、撮影で見つかった表示上の不足と修正も同記録に残す。
+
+## テーマの適用先・表示上の回復（2026-10-11）
+
+追加要件は [テーマの適用先と回復表示](local-browser-ui.md#テーマの適用先と回復表示) に定義する。`tests/browser/local-browser-theme.spec.mjs` に 8 ケースを追加した。システム明色 / 暗色 × VimDF の Dark / Light / Auto の 6 通りを Options の実操作と保存・再読込で確認し、Options・保管庫はシステム、ファイル選択・そのヘルプ・PDF Viewer・そのヘルプは VimDF の設定に従うことを検査する。残る 2 ケースは開いている複数ページへの設定反映、native のシステム配色変更、開いたヘルプ・ダイアログの入力 / フォーカス・PDF の読書位置の維持を確認する。`page.emulateMedia` でブラウザのメディア条件を変更し、`matchMedia` の返り値や画面の CSS を試験側で書き換えない。
+
+`tests/browser/local-browser-feedback.spec.mjs` の 4 ケースは、非既定フォルダを含む許可対象の識別と取消 / 明示許可、DB 失敗後の停止表示・回復用 PDF 選択・登録不変、private 起動拒否後の案内と DB / picker / 権限要求の不実行、ヘルプ検索 0 件の説明と検索解除・背後の選択維持を検査する。private は境界を制御した試験で、実際の private プロファイルの保証ではない。
+
+配色は描画された背景と文字の明暗で検査する。特定の HEX 値、CSS クラス名、style 定義の写し、画像全体の一致を条件にせず、リファクタリングや同じ意味の配色変更を許容する。許可確認や 0 件の検査は合成データと利用者に見える情報・操作結果を使う。既存テストを削除・緩和・skip・期待失敗化していない。
+
+テストのみを追加した `e7a1e5b5f0544242defc8e57c8610aff57ea1a28` の [修正前 Chromium CI](https://github.com/shgnaka/vimdf/actions/runs/38111625780) は 151 成功・4 失敗。テーマの新規 8 ケースと既存 143 ケースは成功し、表示不足の 4 ケースが対象名の不在、読込中文言の残留、0 件説明の不在で失敗した。撮影や環境設定の失敗とは区別する。
+
+修正後の `ab4839daad2e3297c9c516f498da9b152b6d821b` の [Node / build CI](https://github.com/shgnaka/vimdf/actions/runs/38111782450) と [Chromium / contracts CI](https://github.com/shgnaka/vimdf/actions/runs/38111782417) は全件成功。Node 312（パスワード 137、フォルダ 111、scroll 14、統合契約 50）と Chromium 155（既存 143、新規 12）の計 467 ケース、型検査・production build が成功した。CI の checkout、件数、新規 12 ケースをログで確認した。新規テストは修正前後で同一で、期待値を実装に合わせて変更していない。
+
+許可対象名を本番の登録から表示し、初期化停止後の読込中文言を消し、DB 復元失敗と API 非対応の回復説明を分けた。一覧ヘルプには検索 0 件の status を追加した。共通 HelpPanel はこの説明要素が存在する一覧側だけを更新し、Viewer に新しい表示を加えない。Options / Viewer の配色と CSS は未変更。[再撮影 CI](https://github.com/shgnaka/vimdf/actions/runs/38111782415) の 24 撮影ケースも成功した。Options / 保管庫の参照は native システム配色も切り替え、メタデータに実際の systemColorScheme を残す。以前の明色撮影を「暗色設定時」と表示した誤解を修正する。
 
 2026-10-10 の [一覧 UI・キー・ヘルプ・CSS 改訂](local-browser-ui.md#受け入れ条件とテスト化する項目) に UX-01〜13 の追加受け入れ条件を定義した。追加テストに本番実装を接続した。r、一覧全状態の a、一覧 / Viewer 別の native modal help、CSS 編集・反映、常設 UI の除去を検査する。旧コミットの検証件数と今回の検証を区別する。
 
