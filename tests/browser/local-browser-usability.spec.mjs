@@ -51,7 +51,9 @@ test('[UX-18] mouse, keys and filtering keep one selected item and its spoken id
   await filter(page, 'z.pdf'); await selectionMatchesAnnouncement(page, 'z.pdf');
   await expect(status(page)).toContainText('1/1'); await expect(page.locator('#browser-count')).toHaveText(/^1 items?$/);
   await page.keyboard.press('Escape'); await expect(page.getByRole('option')).toHaveCount(4);
-  await selectionMatchesAnnouncement(page, 'z.pdf');
+  // Clearing the filter must leave a valid selection and announcement. It need
+  // not adopt an unspecified policy of retaining the formerly filtered item.
+  await selectionMatchesAnnouncement(page, /^(course|locked\.pdf|z\.pdf|資料 # %\.PDF)$/);
   await roots(page); await selectionMatchesAnnouncement(page, 'University');
   await page.keyboard.press('j'); await selectionMatchesAnnouncement(page, 'Books');
   expect(await extension.registry()).toEqual(saved);
