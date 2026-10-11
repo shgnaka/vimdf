@@ -45,6 +45,7 @@ function toggleHelp() {
 function createRowIcon(directory: boolean) {
   const svg = document.createElementNS("http://www.w3.org/2000/svg", "svg");
   svg.classList.add("row-icon");
+  svg.dataset.testid = "file-kind-icon";
   svg.dataset.kind = directory ? "folder" : "pdf";
   for (const [name, value] of Object.entries({ viewBox: "0 0 24 24", fill: "none", stroke: "currentColor",
     "stroke-width": "2", "stroke-linecap": "round", "stroke-linejoin": "round", "aria-hidden": "true", focusable: "false" })) svg.setAttribute(name, value);
@@ -131,7 +132,7 @@ function render() {
     const directory = isRoot || entry.kind === "directory";
     row.setAttribute("aria-description", directory ? "Folder" : "PDF");
     const icon = createRowIcon(directory);
-    const name = document.createElement("span"); name.className = "row-name"; name.textContent = entry.name;
+    const name = document.createElement("span"); name.className = "row-name"; name.dataset.column = "name"; name.textContent = entry.name;
     if (isRoot && session!.entries.some(other => "id" in other && other.id !== entry.id && other.name === entry.name)) {
       let length = Math.min(8, entry.id.length);
       while (length < entry.id.length && session!.entries.some(other => "id" in other && other.id !== entry.id && other.id.startsWith(entry.id.slice(0, length)))) length++;

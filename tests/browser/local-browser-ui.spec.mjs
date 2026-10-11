@@ -34,6 +34,33 @@ async function tabTo(page, target) {
   throw new Error('Control is unreachable using Tab');
 }
 
+async function informativeColumns(page, expectedRows) {
+  // Each displayed header must identify actual row information. Optional fields
+  // are checked when present, so a useful Type column is allowed. Fixture values
+  // below are independent of the production renderer and its choice of columns.
+  const headers = page.getByTestId('list-fields').locator(':scope > :visible');
+  const labels = { name: 'Name', type: 'Type' };
+  await expect(page.getByRole('option')).toHaveCount(expectedRows.length);
+  const columns = [];
+  for (const header of await headers.all()) {
+    const column = await header.getAttribute('data-column');
+    expect(Object.hasOwn(labels, column), 'Every displayed header describes a known field').toBe(true);
+    await expect(header).toHaveText(labels[column]);
+    columns.push(column);
+    let populated = 0;
+    for (const expected of expectedRows) {
+      const row = page.getByRole('option', { name: expected.name, exact: true });
+      const cell = row.locator(`[data-column="${column}"]`);
+      await expect(cell).toBeVisible();
+      await expect(cell).toHaveText(expected[column]);
+      if (expected[column].trim()) populated++;
+    }
+    expect(populated, `${column} has information for the displayed rows`).toBeGreaterThan(0);
+  }
+  expect(columns).toContain('name');
+  expect(new Set(columns).size, 'A field is not displayed twice').toBe(columns.length);
+}
+
 test('[UX-16] files have no top-level title; actual folder location stays in the status line', async ({ extension }) => {
   const page = await extension.openBrowser(); await ready(page);
   await expect(page).toHaveTitle('File browser — VimDF');
@@ -67,30 +94,48 @@ test('[UX-16] File browser labels and help distinguish selection from the unchan
   await expect(help(page)).toBeHidden();
 });
 
-test('[UX-17] folder/PDF icons replace Type in files and roots while preserving names, descriptions and keyboard selection', async ({ extension }) => {
+test('[UX-17] displayed columns have matching information in files, filtered results and registered folders', async ({ extension }) => {
   await extension.seed(); const page = await extension.openBrowser(); await ready(page);
-  await expect(page.locator('#files .list-labels')).toHaveText('Name');
-  await expect(page.locator('#files .row-kind')).toHaveCount(0);
+  await informativeColumns(page, [
+    { name: 'course', type: 'Folder' },
+    { name: 'locked.pdf', type: 'PDF' },
+    { name: 'z.pdf', type: 'PDF' },
+    { name: '資料 # %.PDF', type: 'PDF' },
+  ]);
+  await filter(page, 'z.pdf');
+  await informativeColumns(page, [{ name: 'z.pdf', type: 'PDF' }]);
+  await page.keyboard.press('Escape'); await page.keyboard.press('r');
+  await expect(screen(page)).toHaveAttribute('data-view', 'roots');
+  await informativeColumns(page, [{ name: 'University', type: 'Folder' }, { name: 'Books', type: 'Folder' }]);
+});
+
+test('[UX-17] file kinds remain identifiable and decorative icons preserve names and selection actions', async ({ extension }) => {
+  await extension.seed(); const page = await extension.openBrowser(); await ready(page);
   const folder = page.getByRole('option', { name: 'course', exact: true });
   const pdf = page.getByRole('option', { name: 'z.pdf', exact: true });
-  await expect(folder).toHaveText('course'); await expect(pdf).toHaveText('z.pdf');
   await expect(folder).toHaveAccessibleDescription('Folder'); await expect(pdf).toHaveAccessibleDescription('PDF');
   for (const [row, kind] of [[folder, 'folder'], [pdf, 'pdf']]) {
-    const icon = row.locator(`svg.row-icon[data-kind="${kind}"]`);
+    const icon = row.getByTestId('file-kind-icon');
     await expect(icon).toBeVisible(); await expect(icon).toHaveAttribute('aria-hidden', 'true');
-    expect(await icon.evaluate(el => ({ width: el.getBoundingClientRect().width, height: el.getBoundingClientRect().height })))
-      .toEqual({ width: 16.25, height: 16.25 });
-    expect(await icon.locator('path').count()).toBeGreaterThan(0);
+    await expect(icon).toHaveAttribute('data-kind', kind);
+    await expect(row).toHaveAccessibleName(kind === 'folder' ? 'course' : 'z.pdf');
+    const dimensions = await icon.evaluate(el => {
+      const rect = el.getBoundingClientRect(), base = parseFloat(getComputedStyle(el).fontSize);
+      return { width: rect.width / base, height: rect.height / base };
+    });
+    expect(dimensions.width).toBeCloseTo(1.25); expect(dimensions.height).toBeCloseTo(1.25);
   }
-  await folder.locator('.row-icon').click(); await expect(folder).toHaveAttribute('aria-selected', 'true');
+  await folder.getByTestId('file-kind-icon').click(); await expect(folder).toHaveAttribute('aria-selected', 'true');
   await expect(page.getByRole('listbox')).toBeFocused();
   await page.keyboard.press('Enter'); await ready(page);
   await expect(page.getByTestId('browser-location')).toContainText('course');
   await expect(page.getByRole('option', { name: 'lesson.pdf', exact: true })).toHaveAccessibleDescription('PDF');
   await page.keyboard.press('r'); await expect(screen(page)).toHaveAttribute('data-view', 'roots');
-  await expect(page.locator('#files .row-kind')).toHaveCount(0);
-  await expect(page.locator('#browser-list svg[data-kind="folder"]')).toHaveCount(2);
-  await expect(page.locator('#browser-list svg[data-kind="pdf"]')).toHaveCount(0);
+  for (const row of await page.getByRole('option').all()) {
+    await expect(row).toHaveAccessibleDescription('Folder');
+    await expect(row.getByTestId('file-kind-icon')).toBeVisible();
+    await expect(row.getByTestId('file-kind-icon')).toHaveAttribute('data-kind', 'folder');
+  }
   await expect(selected(page)).toContainText('Default');
   await expect(page.getByRole('button', { name: 'Unregister Books', exact: true })).toBeVisible();
   await page.keyboard.press('j'); await page.keyboard.press('Enter'); await ready(page);
