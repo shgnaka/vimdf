@@ -104,7 +104,7 @@ for (const fontSize of [13, 17]) {
 test('[UX-19] a wrapped status line stays readable beside the name input and selected row', async ({ extension }) => {
   await extension.seed(); const page = await extension.openBrowser();
   await page.setViewportSize({ width: 320, height: 540 }); await ready(page);
-  const query = 'unbroken-search-name-'.repeat(4);
+  const query = 'unbrokensearchname'.repeat(5);
   await page.keyboard.press('/'); const input = page.getByRole('textbox', { name: 'Filter file or folder names' });
   await input.fill(query); await expect(input).toBeFocused(); await expect(status(page)).toContainText(query);
   await fitsHorizontally(status(page)); await fitsHorizontally(page.locator('#files'));
@@ -180,10 +180,17 @@ test('[UX-21] keyboard action focus remains visible and uses the configurable fo
 });
 
 test.describe('coarse pointer', () => {
-  test.use({ hasTouch: true });
+  test.use({ hasTouch: true, isMobile: true });
   test('[UX-22] touch targets stay large enough without enlarging browser text', async ({ extension }) => {
     await extension.seed(); const page = await extension.openBrowser(); await ready(page);
-    expect(await page.evaluate(() => matchMedia('(pointer: coarse)').matches)).toBe(true);
+    // Chromium extension pages can retain desktop pointer capabilities under
+    // hasTouch alone. Configure the native input emulator, never matchMedia or
+    // the stylesheet, and require the actual coarse-pointer query below.
+    const inputEmulation = await extension.context.newCDPSession(page);
+    await inputEmulation.send('Emulation.setEmitTouchEventsForMouse', { enabled: true, configuration: 'mobile' });
+    const pointer = await page.evaluate(() => ({ coarse: matchMedia('(pointer: coarse)').matches,
+      fine: matchMedia('(pointer: fine)').matches, touchPoints: navigator.maxTouchPoints }));
+    expect(pointer, 'The browser must really expose the coarse-pointer media query').toMatchObject({ coarse: true });
     async function targets() {
       for (const button of await page.locator('#files button:visible').all()) {
         const box = await button.boundingBox();
@@ -193,8 +200,9 @@ test.describe('coarse pointer', () => {
       }
     }
     await targets(); await roots(page); await targets();
-    await page.getByRole('button', { name: 'Unregister University', exact: true }).click();
+    await page.getByRole('button', { name: 'Unregister University', exact: true }).tap();
     await expect(page.getByRole('dialog', { name: 'Unregister folder?' })).toBeVisible(); await targets();
-    await page.keyboard.press('Escape'); await expect(list(page)).toBeFocused();
+    await page.getByRole('button', { name: 'Keep folder', exact: true }).tap(); await expect(list(page)).toBeFocused();
+    await inputEmulation.detach();
   });
 });

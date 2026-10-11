@@ -90,6 +90,13 @@ async function openPdf(file: File, identity: string) {
   }
 }
 function announceStale() { stale = true; document.querySelector<HTMLElement>('[data-testid="registry-stale"]')!.hidden = false; render(); }
+function updateBrowserStatus() {
+  if (!session) return;
+  const count = session.entries.length;
+  const processing = checking || session.busy || (!ready && error.hidden);
+  document.getElementById("browser-count")!.textContent = `${count} ${count === 1 ? "item" : "items"}`;
+  document.getElementById("browser-state")!.textContent = `${processing ? "LOADING " : ""}${session.view.toUpperCase()} ${session.selectedIndex + 1}/${count}${session.filter ? ` /${session.filter}` : ""}`;
+}
 function render() {
   const mode = pdf?.mode ?? "files";
   if (mode !== "files" && help.dialog.open) help.close();
@@ -162,6 +169,7 @@ function render() {
       session!.select(index);
       list.querySelectorAll('[role="option"]').forEach((element, selected) => element.setAttribute("aria-selected", String(selected === session!.selectedIndex)));
       list.setAttribute("aria-activedescendant", `browser-row-${session!.selectedIndex}`);
+      updateBrowserStatus();
       focusFiles();
       row.scrollIntoView({ block: "nearest", inline: "nearest" });
     };
@@ -171,8 +179,7 @@ function render() {
   list.replaceChildren(...rows);
   if (session.selectedIndex >= 0) list.setAttribute("aria-activedescendant", `browser-row-${session.selectedIndex}`);
   else list.removeAttribute("aria-activedescendant");
-  document.getElementById("browser-count")!.textContent = `${rows.length} items`;
-  document.getElementById("browser-state")!.textContent = `${session.view.toUpperCase()} ${session.selectedIndex + 1}/${rows.length}${session.filter ? ` /${session.filter}` : ""}`;
+  updateBrowserStatus();
   if (folderApi && session.inputMode === "filter" && document.activeElement !== filter && !document.querySelector("dialog[open]")) filter.focus({ preventScroll: true });
   else if (session.inputMode !== "filter" && document.activeElement === filter) focusFiles();
   if (folderApi && mode === "files" && !removeDialog.open) rows[session.selectedIndex]?.scrollIntoView({ block: "nearest", inline: "nearest" });
@@ -220,6 +227,16 @@ document.addEventListener("keydown", event => {
   try { if (dispatch(event)) event.preventDefault(); } catch (reason) { event.preventDefault(); showError(reason); render(); }
 });
 removeDialog.addEventListener("close", () => { removingId = null; focusFiles(); });
+removeDialog.addEventListener("keydown", event => {
+  if (event.key !== "Tab" || event.isComposing || event.ctrlKey || event.altKey || event.metaKey) return;
+  const controls = Array.from(removeDialog.querySelectorAll<HTMLButtonElement>("button:not(:disabled)"))
+    .filter(button => button.getClientRects().length > 0);
+  if (!controls.length) return;
+  const index = controls.indexOf(document.activeElement as HTMLButtonElement);
+  const next = index < 0 ? event.shiftKey ? controls.length - 1 : 0
+    : (index + (event.shiftKey ? -1 : 1) + controls.length) % controls.length;
+  event.preventDefault(); controls[next].focus();
+});
 action("cancel-remove").onclick = () => { removeDialog.close(); removingId = null; focusFiles(); };
 action("confirm-remove").onclick = () => {
   const id = removingId; removeDialog.close(); removingId = null;

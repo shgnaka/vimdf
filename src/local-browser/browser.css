@@ -43,16 +43,21 @@ kbd { border: 1px solid var(--page-border); padding: 1px 4px; border-radius: 3px
 /* Vim-like listing: compact monospace rows and a transient command line. */
 .vimdf-browser { font-family: "SFMono-Regular", Consolas, "Liberation Mono", monospace; font-size: 13px; }
 .vimdf-browser :where(h1, h2, h3, small, kbd, button, input, select, textarea) { font-family: inherit; font-size: inherit; }
-.browser-workspace { width: 100%; padding: 18px 24px; }
+.browser-workspace { width: 100%; padding: 18px 24px; min-height: 0; }
 h1 { font-size: 15px; font-weight: normal; margin: 0; }
 .browser-heading { margin-bottom: 12px; justify-content: flex-end; }
 [data-testid="browser-location"] { overflow-wrap: anywhere; min-width: 0; }
-.browser-row { min-height: 32px; padding: 6px 12px; border-radius: 0; }
+.browser-row { min-height: 32px; padding: 6px 12px; border-radius: 0; flex-wrap: wrap; }
+.row-name { flex: 1 1 12em; min-width: 0; }
 .browser-row[aria-selected="true"] { background: var(--vimdf-selection-bg); color: var(--vimdf-selection-fg); box-shadow: inset 3px 0 var(--vimdf-accent); }
 .browser-actions button { padding: 3px 8px; border-radius: 0; background: transparent; color: var(--vimdf-fg); }
 .row-icon { color: var(--vimdf-accent); }
 .row-primary, .list-labels { color: var(--vimdf-muted-fg); }
 .list-labels { padding-left: calc(12px + 1.25em + 16px); }
-.browser-footer { padding: 5px 12px; background: var(--vimdf-status-bg); color: var(--vimdf-status-fg); }
-.browser-search { position: absolute; bottom: 28px; left: 0; right: 0; padding: 6px 12px; margin: 0; border: 0; border-radius: 0; background: var(--vimdf-bg); }
+.browser-footer { padding: 5px 12px; background: var(--vimdf-status-bg); color: var(--vimdf-status-fg); flex-shrink: 0; flex-wrap: wrap; }
+.browser-footer > span { min-width: 0; max-width: 100%; overflow-wrap: anywhere; }
+.browser-search { position: static; flex-shrink: 0; padding: 6px 12px; margin: 0; border: 0; border-radius: 0; background: var(--vimdf-bg); }
 .browser-search input { color: var(--vimdf-fg); }
+@media (pointer: coarse) {
+  #files button { min-width: 44px; min-height: 44px; }
+}
