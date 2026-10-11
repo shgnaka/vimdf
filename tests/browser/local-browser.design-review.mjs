@@ -14,6 +14,8 @@ async function prepare(extension, theme, seed = {}) {
 function captureFor(theme, testInfo) {
   const entries = [];
   return async (page, id, title, note, fullPage = false) => {
+    if (/^(D13(?:-other)?|D14|D20-confirm)$/.test(id)) await expect(page.getByRole('dialog', { name: 'Unregister folder?', exact: true })).toBeVisible();
+    if (/^(D15|D16|D20-help)$/.test(id)) await expect(page.getByRole('dialog', { name: 'File browser keybindings', exact: true })).toBeVisible();
     await page.evaluate(() => document.fonts.ready);
     // Wait for actual layout/paint rather than altering DOM, CSS or row data.
     await page.evaluate(() => new Promise(resolve => requestAnimationFrame(() => requestAnimationFrame(resolve))));
@@ -181,9 +183,16 @@ for (const theme of ['dark', 'light']) {
     await shot(page, 'D20', '狭い幅・長い同名登録', '320 px。長い名前、識別 ID、Default、Remove の折返しを確認。');
     await page.getByRole('button', { name: 'Unregister UnbrokenFolderNameForCourseMaterials', exact: true }).first().click();
     await shot(page, 'D20-confirm', '狭い幅の解除確認', '長い対象名と ID、次の既定、取消・確定ボタンを確認。');
-    await page.keyboard.press('Escape'); await page.keyboard.press('?');
+    await page.keyboard.press('Escape');
+    await expect(page.getByRole('dialog', { name: 'Unregister folder?' })).toBeHidden();
+    await expect(page.getByRole('listbox', { name: 'Files and folders' })).toBeFocused();
+    await page.keyboard.press('?');
+    await expect(page.getByRole('dialog', { name: 'File browser keybindings', exact: true })).toBeVisible();
     await shot(page, 'D20-help', '狭い幅のヘルプ', '表・説明・入力の横はみ出しを確認。内部スクロールを持つ。');
     await page.keyboard.press('Escape');
+    await expect(page.getByRole('dialog', { name: 'File browser keybindings', exact: true })).toBeHidden();
+    await expect(page.getByRole('listbox', { name: 'Files and folders' })).toBeFocused();
+    await expect(screen(page)).toHaveAttribute('data-view', 'roots');
     await extension.setupPage.evaluate(() => chrome.storage.local.set({ 'vimdf.customCss.v1': { version: 1, css: '.vimdf-browser { font-size: 17px; }' } }));
     await expect(page.locator('#files')).toHaveCSS('font-size', '17px');
     await shot(page, 'D20-font17', '狭い幅・基準文字サイズ 17 px', 'Custom CSS で文字サイズだけを変更。補助情報も同じサイズ。');
