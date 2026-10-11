@@ -109,6 +109,7 @@ export class Finder {
 
   // guard async preview renders against rapid selection changes
   private previewToken = 0;
+  private documentRevision = 0;
 
   constructor(
     private viewer: Viewer,
@@ -117,6 +118,16 @@ export class Finder {
   ) {
     this.buildDom();
   }
+
+  resetDocument(): void {
+    this.hide();
+    this.previewToken++; this.documentRevision++;
+    this.pageText = []; this.pageLines = []; this.pageCaptions = [];
+    this.entries = []; this.staticEntries = [];
+    this.textIndexed = this.textIndexing = false;
+    this.thumbCache.clear(); this.thumbInFlight.clear();
+  }
+  dispose(): void { this.resetDocument(); this.overlayEl.remove(); }
 
   isActive(): boolean {
     return this.open;
@@ -375,6 +386,7 @@ export class Finder {
   private async indexText(): Promise<void> {
     const doc = this.viewer.pdfDocument;
     if (!doc) return;
+    const revision = this.documentRevision;
     this.textIndexing = true;
     const total = doc.numPages;
     this.pageText = new Array(total).fill("");
@@ -386,14 +398,16 @@ export class Finder {
         const end = Math.min(total, i + BATCH);
         await Promise.all(
           Array.from({ length: end - i }, (_, k) =>
-            this.indexPage(i + k + 1),
+            this.indexPage(i + k + 1, revision),
           ),
         );
+        if (revision !== this.documentRevision || doc !== this.viewer.pdfDocument) return;
         if (this.open) {
           this.statusEl.textContent = `indexing ${end}/${total}…`;
         }
         await yieldToUi();
       }
+      if (revision !== this.documentRevision || doc !== this.viewer.pdfDocument) return;
       this.textIndexed = true;
       if (this.open) {
         this.statusEl.textContent = "";
@@ -403,16 +417,17 @@ export class Finder {
         this.refresh();
       }
     } finally {
-      this.textIndexing = false;
+      if (revision === this.documentRevision) this.textIndexing = false;
     }
   }
 
-  private async indexPage(pageNumber: number): Promise<void> {
+  private async indexPage(pageNumber: number, revision: number): Promise<void> {
     const doc = this.viewer.pdfDocument;
     if (!doc) return;
     try {
       const page = await doc.getPage(pageNumber);
       const tc = await page.getTextContent();
+      if (revision !== this.documentRevision || doc !== this.viewer.pdfDocument) return;
 
       // Collect text items with PDF-space positions. We rely on `transform`
       // (the final positioning matrix: X = [4], Y = [5]) instead of
@@ -782,6 +797,7 @@ export class Finder {
       const ctx = canvas.getContext("2d");
       if (!ctx) return null;
       await page.render({ canvasContext: ctx, viewport }).promise;
+      if (this.viewer.pdfDocument !== doc) return null;
       this.thumbCache.set(pageNumber, canvas);
       return canvas;
     } catch {

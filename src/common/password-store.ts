@@ -1,4 +1,6 @@
 import { validateRegistration, type PasswordAnswer, type PasswordRecord, type PasswordStore } from "../viewer/passwords.ts";
+import { EncryptedPasswordStore, PASSWORD_VAULT_POLICY, type VaultSession } from "./encrypted-password-store.ts";
+export { EncryptedPasswordStore, PASSWORD_VAULT_POLICY };
 
 const STORAGE_KEY = "vimdf.passwords.v1";
 export interface PasswordVault {
@@ -132,15 +134,34 @@ export class LocalPasswordStore implements PasswordStore {
   async clear(): Promise<void> { await this.change(() => {}, true); }
 }
 
-export function createPasswordStore(signal?: AbortSignal): LocalPasswordStore {
-  return new LocalPasswordStore(
-    chrome.storage.local,
-    chrome.extension.inIncognitoContext,
-    action => new Promise((resolve, reject) => {
+const pageSessions = new WeakMap<object, VaultSession>();
+let channel: BroadcastChannel | undefined;
+export function createPasswordStore(signal?: AbortSignal): EncryptedPasswordStore {
+  const storage = chrome.storage.local;
+  let session = pageSessions.get(storage);
+  if (!session) { session = { epoch: 0, activity: Date.now() }; pageSessions.set(storage, session); }
+  if (typeof window !== "undefined" && !channel) {
+    channel = new BroadcastChannel("vimdf-password-vault-lock");
+    channel.onmessage = () => { const s = pageSessions.get(storage); if (s) { s.key = undefined; s.signature = undefined; s.epoch++; } };
+    const expire = () => {
+      const s = pageSessions.get(storage);
+      if (s?.key && Date.now() - s.activity >= PASSWORD_VAULT_POLICY.idleTimeoutMs) { s.key = undefined; s.signature = undefined; s.epoch++; }
+    };
+    const activity = () => { expire(); const s = pageSessions.get(storage); if (s?.key) s.activity = Date.now(); };
+    const timer = setInterval(expire, 1000);
+    for (const event of ["pointerdown", "keydown", "wheel"]) document.addEventListener(event, activity, { passive: true });
+    window.addEventListener("pagehide", () => {
+      clearInterval(timer); for (const event of ["pointerdown", "keydown", "wheel"]) document.removeEventListener(event, activity);
+      const s = pageSessions.get(storage); if (s) { s.key = undefined; s.signature = undefined; s.epoch++; }
+      channel?.close(); channel = undefined;
+    }, { once: true });
+  }
+  return new EncryptedPasswordStore({ storage, incognito: chrome.extension.inIncognitoContext,
+    withLock: action => new Promise((resolve, reject) => {
       void navigator.locks.request("vimdf-password-vault", async () => {
         try { resolve(await action()); } catch (error) { reject(error); }
       }).catch(reject);
     }),
-    signal,
-  );
+    crypto: globalThis.crypto, now: Date.now, idleTimeoutMs: PASSWORD_VAULT_POLICY.idleTimeoutMs,
+    signal, session, onInvalidate: () => channel?.postMessage("invalidate") });
 }

@@ -234,9 +234,22 @@
         </label>
       </section>
 
+      <section id="customCssSettings"><h2>Custom CSS</h2><p class="hint">Customize the browser, PDF viewer and help. These styles do not apply to Options.</p><label for="customCss">Custom CSS</label><textarea id="customCss" rows="10" spellcheck="false"></textarea><button id="saveCustomCss" type="button">Save CSS</button><button id="resetCustomCss" type="button">Reset CSS</button><p id="customCssStatus" role="status"></p></section>
       <section id="passwordSettings">
         <h2>PDF passwords</h2>
-        <p class="hint">Saved in plain text in this browser profile. Passwords are not synced and are only passed to the local PDF reader.</p>
+        <p class="hint">Saved passwords are encrypted in this browser profile with your master password. Keep the master in your password manager; it is never saved here. Passwords are not synced.</p>
+        <p id="passwordVaultStatus" role="status"></p>
+        <div class="password-vault-actions">
+          <button id="passwordCreateVault" type="button">Create vault</button>
+          <button id="passwordUnlockVault" type="button">Unlock vault</button>
+          <button id="passwordLockVault" type="button">Lock vault</button>
+          <button id="passwordBackup" type="button">Encrypted backup</button>
+          <button id="passwordRestore" type="button">Restore backup</button>
+          <button id="passwordExportPlaintext" type="button">Export plaintext</button>
+          <button id="passwordChangeMaster" type="button">Change master password</button>
+          <button id="passwordResetVault" type="button">Reset vault</button>
+          <button id="passwordMigrate" type="button">Migrate saved passwords</button>
+        </div>
         <label class="row checkbox"><input type="checkbox" id="passwordAutoFill" /><span>Automatically try saved passwords</span></label>
         <form class="password-form">
           <label>Name <input name="name" type="text" placeholder="e.g. Course materials" /></label>
@@ -265,6 +278,25 @@
           <code>application/pdf</code>. Turn this off to hand PDFs back to
           Chrome&rsquo;s built-in viewer without uninstalling VimDF.
         </p>
+      </section>
+
+      <section id="localBrowserSettings">
+        <h2>File browser</h2>
+        <p class="hint">Register several folders in a dedicated tab. Selecting a registered folder makes it the default starting folder. Folder handles stay on this device.</p>
+        <button id="launchLocalBrowser" type="button">Open file browser</button>
+        <h3>Folder buttons</h3>
+        <label class="row checkbox"><input id="showRegisteredFoldersButton" type="checkbox" /><span>Show Registered folders button</span></label>
+        <label class="row checkbox"><input id="showAddFolderButton" type="checkbox" /><span>Show Add folder button</span></label>
+        <p class="hint">Hide either button for a keyboard-only listing. The r and a keys still work; press ? in the listing to see its keybindings.</p>
+        <h3>Vimium C connection</h3>
+        <label class="row checkbox"><input id="launcherEnabled" type="checkbox" disabled /><span>Allow external extension launches</span></label>
+        <label class="row"><span>Allowed extension IDs</span><textarea id="launcherAllowedIds" rows="3" spellcheck="false" placeholder="One 32-character extension ID per line" disabled></textarea></label>
+        <p class="hint">Copy the Vimium C ID from your browser’s extension settings. Only IDs you list here can launch the browser.</p>
+        <label class="row"><span>VimDF extension ID</span><input id="vimdfExtensionId" type="text" readonly /></label>
+        <p class="hint">Add these commands to Vimium C’s Custom key mappings and Custom search engines. Change the shortcut in Vimium C if desired.</p>
+        <pre id="launcherCommands"></pre>
+        <button id="copyLauncherCommands" type="button">Copy commands</button>
+        <p id="launcherStatus" role="status"></p>
       </section>
 
       <section>

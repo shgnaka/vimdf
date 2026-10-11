@@ -17,6 +17,7 @@ jobs:
       - run: npm ci
       - run: npm run test:password
       - run: npm run test:scroll
+      - run: npm run test:local-browser
       - run: npm run build
       - name: Include licenses
         run: |

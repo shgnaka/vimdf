@@ -11,6 +11,7 @@ export interface PasswordAnswer {
   password: string;
   remember: boolean;
   shared: boolean;
+  retrySaved?: boolean;
 }
 
 export interface PasswordStore {
@@ -102,6 +103,11 @@ export async function openWithPasswords<T>(options: PasswordLoadOptions<T>): Pro
       const answer = await options.prompt({ incorrect: reason === 2, signal: lifetime.signal });
       if (stopped) return;
       if (answer === null) { cancel(); return; }
+      if (answer.retrySaved) {
+        candidates = undefined; cursor = 0;
+        task.onPassword?.(updatePassword, reason);
+        return;
+      }
       successfulAnswer = answer;
       updatePassword(answer.password);
     })().catch(() => fail(new Error("Unable to request a PDF password")));

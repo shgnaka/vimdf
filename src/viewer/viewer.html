@@ -6,7 +6,7 @@
     <title>VimDF</title>
     <link rel="stylesheet" href="./viewer.css" />
   </head>
-  <body>
+  <body class="vimdf-ui vimdf-viewer">
     <div id="viewerContainer" tabindex="0">
       <div id="viewer" class="pdfViewer"></div>
     </div>
@@ -16,14 +16,14 @@
       <div id="outlineTree"></div>
     </aside>
 
-    <footer id="statusbar">
+    <footer id="statusbar" class="vimdf-statusline">
       <span id="statusLeft"></span>
       <span id="modeIndicator"></span>
       <span id="statusCenter"></span>
       <span id="statusRight"></span>
     </footer>
 
-    <div id="searchbar" hidden>
+    <div id="searchbar" class="vimdf-commandline" hidden>
       <span id="searchPrompt">/</span>
       <input
         type="text"
@@ -34,7 +34,7 @@
       <span id="searchStatus"></span>
     </div>
 
-    <div id="help" hidden>
+    <dialog id="help" class="vimdf-ui vimdf-viewer vimdf-help" aria-label="PDF viewer keybindings" hidden>
       <div class="help-inner">
         <h2>VimDF — Keybindings</h2>
         <div id="helpSearch" hidden>
@@ -139,7 +139,7 @@
         </table>
         <p class="hint">Press ? or Esc to close.</p>
       </div>
-    </div>
+    </dialog>
 
     <script type="module" src="./viewer.ts"></script>
   </body>

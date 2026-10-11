@@ -41,9 +41,11 @@ Each push and pull request generates an artifact after tests and the build pass.
 
 ### Password-protected PDFs
 
-In extension settings, register named passwords under **PDF passwords**. VimDF tries the last successful password for the document first, then enabled passwords marked for use on other PDFs. If none succeeds, enter a password in the modal dialog; saving is optional and happens only after the PDF opens. Registrations can be edited, disabled, reordered, or deleted.
+In extension settings, create or unlock a vault under **PDF passwords**, then register named passwords. VimDF tries the last successful password for the document first, then enabled passwords marked for use on other PDFs. If none succeeds, enter a password in the modal dialog; saving is optional and happens only after the PDF opens. Registrations can be edited, disabled, reordered, or deleted.
 
-Passwords are stored in plain text in this browser profile, never synced, and only passed to the local PDF.js reader. Incognito mode does not read or write the password vault. Disable automatic input in settings to enter passwords manually. Development checks: Node.js 24+, `npm ci`, `npm run test:password`, and `npm run build`.
+Saved passwords and their names/document associations are encrypted with AES-256-GCM in this browser profile, never synced, and only passed to the local PDF.js reader after unlocking. Keep a dedicated master password in your password manager. Each page unlocks separately, stays unlocked across its document changes, and locks after 15 minutes without keyboard, pointer or wheel activity. Incognito mode does not read or write the password vault. Disable automatic input in settings to enter passwords manually. Development checks: Node.js 24+, `npm ci`, `npm run test:password`, and `npm run build`.
+
+Options provides encrypted backup while locked, validated whole-vault restore, master-password change, vault-only reset, and plaintext JSON export with fresh reauthentication for every output. Old plaintext registrations stay unavailable until explicit migration verifies encrypted readback and removes them. See the [vault specification](docs/pdf-password-protection.md) and [security acceptance tests](docs/pdf-password-testing.md). Plaintext export is readable and must be handled separately from encrypted backups.
 
 - **Vim-style navigation** — `j`/`k`/`h`/`l`, `gg`/`G`/`{n}G`, `Ctrl-d`/`Ctrl-u`/`Ctrl-f`/`Ctrl-b`
 - **Tab navigation** (Vimium-compatible) — `J`/`K` previous/next tab, `g0`/`g$` first/last, `t` new tab, `x` close. Fills the gap left by Vimium not being able to bind keys on Chrome's PDF viewer
@@ -138,6 +140,32 @@ Either way, you can always **drop a PDF onto the viewer** or pick one from
 the prompt. Reading a file you hand over directly needs no permission at all,
 and the document keeps its marks, highlights and last page.
 
+### Registered folders and Vimium C
+
+Click the VimDF toolbar icon, or **Open file browser** in Options, to
+open the folder browser. **Add folder** registers one folder at a time.
+Use `j` / `k` to select, `Enter` / `l` to open, `h` to move to the parent,
+and `/` to filter the current list by name. At a registered root, `h` opens
+the registered-folder list. Confirming another folder makes it the default
+starting folder; `Esc` returns without changing it.
+
+PDFs open in the same tab with the existing Viewer keys: `/` searches the
+PDF text and `n` / `N` move between matches. `H` or **Files** returns to the
+same folder, filter and selection. Browser history can resume the retained
+PDF; reloading starts at the saved primary folder. There is no recursive
+folder search or cross-document text index.
+
+Folder handles and the primary selection are saved in IndexedDB on this
+device. Another tab's changes are announced and require an explicit reload.
+Removing a registration keeps your files and saved PDF data.
+
+For Vimium C, enable **Allow external extension launches** in Options,
+register its extension ID, and copy the generated key mapping and search
+engine commands into Vimium C. External launches are disabled by default.
+The connection settings stay on this device. See the
+[setup and key specification](docs/vimium-local-browser.md) and
+[test coverage and manual checks](docs/local-browser-testing.md).
+
 ## 🛠 Development
 
 ```bash
@@ -154,7 +182,9 @@ src/
 ├── common/settings.ts             # chrome.storage.sync schema + migrations
 ├── options/                       # options page (HTML/CSS/TS)
 └── viewer/                        # the viewer itself
-    ├── viewer.ts                  # PDF.js integration, state persistence
+    ├── viewer.ts                  # normal URL / MIME bootstrap
+    ├── core.ts                    # PDF.js integration, state persistence
+    ├── runtime.ts                 # shared controllers and lifecycle
     ├── vim-controller.ts          # root keydown dispatcher
     ├── caret-mode.ts              # modal text-caret navigation & selection
     ├── finder.ts                  # Telescope-style fuzzy finder (T)

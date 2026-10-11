@@ -60,6 +60,7 @@ export async function buildOutline(
   doc: PDFDocumentProxy,
   linkService: PDFLinkService,
   viewer: Viewer,
+  prepared?: unknown,
 ): Promise<void> {
   outlineRows = [];
   foldLevel = Infinity;
@@ -67,7 +68,8 @@ export async function buildOutline(
   if (!tree) return;
   tree.innerHTML = "";
 
-  const outline = (await doc.getOutline()) as OutlineNode[] | null;
+  const outline = (prepared === undefined ? await doc.getOutline() : prepared) as OutlineNode[] | null;
+  if (viewer.pdfDocument !== doc) return;
   if (!outline || outline.length === 0) {
     tree.textContent = "(no outline)";
     tree.style.color = "#888";
@@ -76,12 +78,13 @@ export async function buildOutline(
   }
 
   tree.appendChild(renderList(outline, linkService, viewer));
-  void resolveOutlinePages(doc);
+  void resolveOutlinePages(doc, viewer).catch(() => {});
 }
 
-async function resolveOutlinePages(doc: PDFDocumentProxy): Promise<void> {
+async function resolveOutlinePages(doc: PDFDocumentProxy, viewer: Viewer): Promise<void> {
   for (const meta of outlineRows) {
     const resolved = await resolveDest(doc, meta.node.dest);
+    if (viewer.pdfDocument !== doc) return;
     meta.page = resolved.page;
     meta.xPdf = resolved.xPdf;
     meta.yPdf = resolved.yPdf;

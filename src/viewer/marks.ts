@@ -24,10 +24,14 @@ export class MarksStore {
     return `vimdf:marks:${this.pdfUrl}`;
   }
 
-  async load(): Promise<void> {
-    const result = await chrome.storage.local.get(this.key);
-    this.marks = (result[this.key] as MarkMap | undefined) ?? {};
+  async prepare(pdfUrl: string): Promise<() => void> {
+    const key = `vimdf:marks:${pdfUrl}`;
+    const result = await chrome.storage.local.get(key);
+    const marks = (result[key] as MarkMap | undefined) ?? {};
+    return () => { this.pdfUrl = pdfUrl; this.marks = marks; };
   }
+
+  async load(): Promise<void> { (await this.prepare(this.pdfUrl))(); }
 
   /**
    * Point at a different document and reload its marks. Used when the viewer
@@ -36,8 +40,7 @@ export class MarksStore {
    * keep writing the new document's marks under the old document's key.
    */
   async retarget(pdfUrl: string): Promise<void> {
-    this.pdfUrl = pdfUrl;
-    await this.load();
+    (await this.prepare(pdfUrl))();
   }
 
   set(name: string, pos: MarkPosition): void {

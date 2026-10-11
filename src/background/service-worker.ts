@@ -1,3 +1,4 @@
+import { installLocalBrowserLauncher } from "./local-browser-launcher";
 // Service worker for VimDF.
 // Keep the local password vault unavailable to content scripts on startup.
 void chrome.storage.local.setAccessLevel({ accessLevel: "TRUSTED_CONTEXTS" }).catch(() => {});
@@ -421,3 +422,5 @@ chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
 });
 
 export {};
+
+installLocalBrowserLauncher(chrome);

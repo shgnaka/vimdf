@@ -1,3 +1,5 @@
+import { setupCustomCssOptions } from "../common/custom-css";
+import { setupLauncherOptions } from "./launcher-options";
 import { setupPasswordOptions } from "./password-options";
 import {
   DEFAULT_SETTINGS,
@@ -16,6 +18,8 @@ import {
 } from "../viewer/mime-handler";
 
 const fields = {
+  showAddFolderButton: document.getElementById("showAddFolderButton") as HTMLInputElement,
+  showRegisteredFoldersButton: document.getElementById("showRegisteredFoldersButton") as HTMLInputElement,
   theme: document.getElementById("theme") as HTMLSelectElement,
   scrollStep: document.getElementById("scrollStep") as HTMLInputElement,
   hScrollStep: document.getElementById("hScrollStep") as HTMLInputElement,
@@ -161,6 +165,8 @@ function applyInitialZoom(raw: string): void {
 }
 
 function apply(settings: Settings): void {
+  fields.showAddFolderButton.checked = settings.showAddFolderButton;
+  fields.showRegisteredFoldersButton.checked = settings.showRegisteredFoldersButton;
   fields.theme.value = settings.theme;
   fields.scrollStep.value = String(settings.scrollStep);
   fields.hScrollStep.value = String(settings.hScrollStep);
@@ -222,6 +228,8 @@ function readInitialZoom(): string {
 
 function readForm(): Partial<Settings> {
   return {
+    showAddFolderButton: fields.showAddFolderButton.checked,
+    showRegisteredFoldersButton: fields.showRegisteredFoldersButton.checked,
     theme: fields.theme.value as Theme,
     scrollStep: clamp(parseInt(fields.scrollStep.value, 10), 10, 500, 100),
     hScrollStep: clamp(parseInt(fields.hScrollStep.value, 10), 10, 500, 80),
@@ -407,3 +415,7 @@ async function refreshLocalFileStatus(): Promise<void> {
 
 void refreshLocalFileStatus();
 setupPasswordOptions();
+
+void setupLauncherOptions();
+
+setupCustomCssOptions();

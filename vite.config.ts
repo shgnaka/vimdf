@@ -63,6 +63,7 @@ const manifestConfig = {
     },
   ],
   options_page: "src/options/options.html",
+  action: { default_title: "Open VimDF local PDFs" },
   web_accessible_resources: [
     {
       resources: ["src/viewer/viewer.html", "assets/*", "cmaps/*"],
@@ -106,6 +107,7 @@ export default defineConfig({
     rollupOptions: {
       input: {
         viewer: "src/viewer/viewer.html",
+        browser: "src/local-browser/browser.html",
       },
     },
   },

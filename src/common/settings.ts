@@ -18,6 +18,8 @@ export interface Settings {
   // expects at `pdfViewer.currentScaleValue`, so we pass it through.
   initialZoom: string;
   rememberLastPage: boolean;
+  showAddFolderButton: boolean;
+  showRegisteredFoldersButton: boolean;
   // What plain `o` does when the outline is open but not focused:
   // "toggle" closes it; "refocus" re-enters outline navigation (close with
   // another `o` while focused, release focus with Esc / Ctrl-h).
@@ -50,6 +52,8 @@ export const DEFAULT_SETTINGS: Settings = {
   zoomStep: 1.1,
   initialZoom: "page-fit",
   rememberLastPage: true,
+  showAddFolderButton: true,
+  showRegisteredFoldersButton: true,
   outlineOBehavior: "toggle",
   halfPageDownKey: "d",
   halfPageUpKey: "u",
@@ -66,7 +70,12 @@ export const DEFAULT_SETTINGS: Settings = {
 
 export async function loadSettings(): Promise<Settings> {
   const result = await chrome.storage.sync.get(DEFAULT_SETTINGS);
-  return { ...DEFAULT_SETTINGS, ...(result as Partial<Settings>) };
+  return {
+    ...DEFAULT_SETTINGS, ...(result as Partial<Settings>),
+    // Only an explicit false hides an action; old/corrupt profiles keep access.
+    showAddFolderButton: result.showAddFolderButton !== false,
+    showRegisteredFoldersButton: result.showRegisteredFoldersButton !== false,
+  };
 }
 
 export async function saveSettings(patch: Partial<Settings>): Promise<void> {
